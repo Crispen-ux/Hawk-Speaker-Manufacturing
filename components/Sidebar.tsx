@@ -7,12 +7,20 @@ const links = [
   { href: "/", label: "Dashboard", glyph: "◆" },
   { href: "/invoices", label: "Invoices", glyph: "①" },
   { href: "/quotations", label: "Quotations", glyph: "②" },
-  { href: "/statements", label: "Statements", glyph: "③" },
-  { href: "/clients", label: "Clients", glyph: "④" },
-  { href: "/settings", label: "Settings", glyph: "⑤" },
+  { href: "/recurring", label: "Recurring", glyph: "③" },
+  { href: "/statements", label: "Statements", glyph: "④" },
+  { href: "/clients", label: "Clients", glyph: "⑤" },
+  { href: "/catalog", label: "Catalogue", glyph: "⑥" },
+  { href: "/settings", label: "Settings", glyph: "⑦" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  logoData,
+  companyName,
+}: {
+  logoData?: string | null;
+  companyName?: string;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -25,6 +33,10 @@ export default function Sidebar() {
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col bg-navy text-paper">
       <div className="border-b border-white/10 px-6 py-6">
+        {logoData ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoData} alt={companyName || "Logo"} className="mb-2 max-h-10 max-w-[140px] object-contain" />
+        ) : null}
         <div className="font-display text-2xl italic tracking-tight text-paper">Ledger</div>
         <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/50">
           Invoicing &amp; accounts

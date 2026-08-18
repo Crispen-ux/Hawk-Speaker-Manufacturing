@@ -20,7 +20,7 @@ export default async function StatementsPage() {
         />
       ) : (
         <Card className="max-w-xl">
-          <StatementForm clients={allClients.map((c) => ({ id: c.id, name: c.name }))} />
+          <StatementForm clients={allClients.map((c) => ({ id: c.id, name: c.name, email: c.email }))} />
         </Card>
       )}
     </div>

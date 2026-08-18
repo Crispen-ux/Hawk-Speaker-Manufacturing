@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { clients, invoices } from "@/db/schema";
+import { clients, invoices, catalogItems } from "@/db/schema";
 import { updateInvoice } from "@/lib/actions/invoices";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 import LineItemsEditor from "@/components/LineItemsEditor";
@@ -19,6 +19,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   if (!invoice) notFound();
 
   const allClients = await db.select().from(clients).orderBy(clients.name);
+  const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
   const updateWithId = updateInvoice.bind(null, invoiceId);
 
   return (
@@ -52,6 +53,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             }))}
             initialTaxRate={invoice.taxRate}
             initialDiscount={invoice.discount}
+            catalogItems={catalog}
           />
 
           <Field label="Notes (shown on PDF)">

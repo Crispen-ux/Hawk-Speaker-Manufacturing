@@ -8,6 +8,20 @@
       "when": 1786964777995,
       "tag": "0000_bumpy_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787039489214,
+      "tag": "0001_mighty_star_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787040866099,
+      "tag": "0002_dark_kree",
+      "breakpoints": true
     }
   ]
 }

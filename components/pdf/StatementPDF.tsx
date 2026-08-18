@@ -1,5 +1,5 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { formatDate, formatMoney, toNumber } from "@/lib/money";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { formatDate, formatMoney } from "@/lib/money";
 
 const styles = StyleSheet.create({
   page: {
@@ -23,6 +23,12 @@ const styles = StyleSheet.create({
   },
   docTitle: { fontSize: 22, fontFamily: "Helvetica-Bold" },
   companyBlock: { alignItems: "flex-end", maxWidth: 220 },
+  logo: {
+    maxWidth: 140,
+    maxHeight: 56,
+    marginBottom: 8,
+    objectFit: "contain",
+  },
   companyName: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 2 },
   small: { fontSize: 9, color: "#4a5a5c", textAlign: "right" },
   metaRow: {
@@ -112,6 +118,7 @@ export default function StatementPDF({
     email?: string | null;
     phone?: string | null;
     address?: string | null;
+    logoData?: string | null;
   };
 }) {
   const totalCharged = rows.reduce((s, r) => s + r.total, 0);
@@ -127,6 +134,7 @@ export default function StatementPDF({
             <Text style={styles.docTitle}>{client.name}</Text>
           </View>
           <View style={styles.companyBlock}>
+            {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
             <Text style={styles.companyName}>{company.companyName}</Text>
             {company.address ? <Text style={styles.small}>{company.address}</Text> : null}
             {company.email ? <Text style={styles.small}>{company.email}</Text> : null}

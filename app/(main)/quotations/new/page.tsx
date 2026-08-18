@@ -1,5 +1,6 @@
 import { db } from "@/db";
-import { clients } from "@/db/schema";
+import { clients, catalogItems } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { createQuotation } from "@/lib/actions/quotations";
 import { getSettings } from "@/lib/numbering";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card, EmptyState, LinkButton } from "@/components/ui";
@@ -24,6 +25,7 @@ export default async function NewQuotationPage({
   const { client } = await searchParams;
   const allClients = await db.select().from(clients).orderBy(clients.name);
   const settings = await getSettings();
+  const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
 
   if (allClients.length === 0) {
     return (
@@ -68,6 +70,7 @@ export default async function NewQuotationPage({
             initialItems={[]}
             initialTaxRate={settings.defaultTaxRate}
             initialDiscount="0"
+            catalogItems={catalog}
           />
 
           <Field label="Notes (shown on PDF)">

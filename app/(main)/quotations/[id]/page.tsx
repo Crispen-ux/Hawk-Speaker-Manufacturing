@@ -3,10 +3,12 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { quotations } from "@/db/schema";
 import { setQuotationStatus, deleteQuotation, convertToInvoice } from "@/lib/actions/quotations";
+import { sendQuotationEmailAction } from "@/lib/actions/send";
 import { computeQuotation } from "@/lib/calc";
 import { formatDate, formatMoney, toNumber } from "@/lib/money";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
+import SendEmailForm from "@/components/SendEmailForm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
   const setStatus = setQuotationStatus.bind(null, quotationId);
   const removeQuotation = deleteQuotation.bind(null, quotationId);
   const convert = convertToInvoice.bind(null, quotationId);
+  const sendAction = sendQuotationEmailAction.bind(null, quotationId);
 
   return (
     <div>
@@ -122,6 +125,18 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">
+              Send by email
+            </h3>
+            <SendEmailForm action={sendAction} defaultTo={quotation.client?.email} buttonLabel="Send quotation" />
+            {quotation.lastSentAt && (
+              <p className="mt-3 border-t border-rule pt-3 text-xs text-ink-soft">
+                Last sent {formatDate(quotation.lastSentAt.toISOString())}
+              </p>
+            )}
+          </Card>
+
           <Card>
             <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">Status</h3>
             <div className="flex flex-wrap gap-2">

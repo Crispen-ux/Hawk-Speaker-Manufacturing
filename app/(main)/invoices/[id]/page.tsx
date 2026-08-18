@@ -3,10 +3,12 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { invoices } from "@/db/schema";
 import { setInvoiceStatus, deleteInvoice, addPayment, deletePayment } from "@/lib/actions/invoices";
+import { sendInvoiceEmailAction } from "@/lib/actions/send";
 import { computeInvoice } from "@/lib/calc";
 import { formatDate, formatMoney, toNumber } from "@/lib/money";
 import { PageHeader, GhostLink, Card, Field, inputClass, PrimaryButton } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
+import SendEmailForm from "@/components/SendEmailForm";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const setStatus = setInvoiceStatus.bind(null, invoiceId);
   const removeInvoice = deleteInvoice.bind(null, invoiceId);
   const recordPayment = addPayment.bind(null, invoiceId);
+  const sendAction = sendInvoiceEmailAction.bind(null, invoiceId);
 
   return (
     <div>
@@ -174,6 +177,18 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">
+              Send by email
+            </h3>
+            <SendEmailForm action={sendAction} defaultTo={invoice.client?.email} buttonLabel="Send invoice" />
+            {invoice.lastSentAt && (
+              <p className="mt-3 border-t border-rule pt-3 text-xs text-ink-soft">
+                Last sent {formatDate(invoice.lastSentAt.toISOString())}
+              </p>
+            )}
+          </Card>
+
           <Card>
             <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">Status</h3>
             <div className="flex flex-wrap gap-2">

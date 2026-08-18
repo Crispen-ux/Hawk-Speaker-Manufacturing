@@ -5,21 +5,25 @@ import { formatMoney, toNumber } from "@/lib/money";
 import { inputClass } from "@/components/ui";
 
 export type Item = { description: string; quantity: string; unitPrice: string };
+export type CatalogOption = { id: number; name: string; description?: string | null; unitPrice: string; unit?: string | null };
 
 export default function LineItemsEditor({
   initialItems,
   initialTaxRate,
   initialDiscount,
+  catalogItems = [],
 }: {
   initialItems: Item[];
   initialTaxRate: string;
   initialDiscount: string;
+  catalogItems?: CatalogOption[];
 }) {
   const [items, setItems] = useState<Item[]>(
     initialItems.length > 0 ? initialItems : [{ description: "", quantity: "1", unitPrice: "0" }]
   );
   const [taxRate, setTaxRate] = useState(initialTaxRate);
   const [discount, setDiscount] = useState(initialDiscount);
+  const [catalogPick, setCatalogPick] = useState("");
 
   function updateItem(i: number, patch: Partial<Item>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
@@ -27,6 +31,20 @@ export default function LineItemsEditor({
 
   function addRow() {
     setItems((prev) => [...prev, { description: "", quantity: "1", unitPrice: "0" }]);
+  }
+
+  function addFromCatalog() {
+    const chosen = catalogItems.find((c) => String(c.id) === catalogPick);
+    if (!chosen) return;
+    const description = chosen.unit ? `${chosen.name} (${chosen.unit})` : chosen.name;
+    setItems((prev) => {
+      const withCatalog = [
+        ...prev.filter((it) => it.description.trim() !== ""),
+        { description, quantity: "1", unitPrice: chosen.unitPrice },
+      ];
+      return withCatalog;
+    });
+    setCatalogPick("");
   }
 
   function removeRow(i: number) {
@@ -41,6 +59,32 @@ export default function LineItemsEditor({
   return (
     <div>
       <input type="hidden" name="items" value={JSON.stringify(items)} />
+
+      {catalogItems.length > 0 && (
+        <div className="mb-3 flex items-center gap-2">
+          <select
+            value={catalogPick}
+            onChange={(e) => setCatalogPick(e.target.value)}
+            className={`${inputClass} max-w-xs`}
+          >
+            <option value="">Add from catalogue…</option>
+            {catalogItems.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} — {formatMoney(c.unitPrice)}
+                {c.unit ? ` / ${c.unit}` : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={addFromCatalog}
+            disabled={!catalogPick}
+            className="rounded-md border border-rule-strong px-3 py-2 text-sm font-medium text-ink hover:bg-paper-dim disabled:opacity-40"
+          >
+            Add
+          </button>
+        </div>
+      )}
 
       <div className="rounded-lg border border-rule">
         <div className="grid grid-cols-[1fr_90px_130px_110px_36px] gap-2 border-b border-rule bg-paper-dim px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">

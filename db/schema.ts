@@ -7,6 +7,7 @@ import {
   date,
   timestamp,
   integer,
+  boolean,
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -26,6 +27,13 @@ export const quotationStatusEnum = pgEnum("quotation_status", [
   "accepted",
   "declined",
   "expired",
+]);
+
+export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
+  "weekly",
+  "monthly",
+  "quarterly",
+  "yearly",
 ]);
 
 export const clients = pgTable("clients", {
@@ -50,6 +58,8 @@ export const invoices = pgTable("invoices", {
   taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
   discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
   notes: text("notes"),
+  lastSentAt: timestamp("last_sent_at"),
+  recurringInvoiceId: integer("recurring_invoice_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -88,6 +98,7 @@ export const quotations = pgTable("quotations", {
   taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
   discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
   notes: text("notes"),
+  lastSentAt: timestamp("last_sent_at"),
   convertedInvoiceId: integer("converted_invoice_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -110,6 +121,7 @@ export const settings = pgTable("settings", {
   phone: varchar("phone", { length: 64 }),
   address: text("address"),
   bankDetails: text("bank_details"),
+  logoData: text("logo_data"),
   defaultTaxRate: numeric("default_tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
   invoicePrefix: varchar("invoice_prefix", { length: 16 }).default("INV-").notNull(),
   quotationPrefix: varchar("quotation_prefix", { length: 16 }).default("QUO-").notNull(),
@@ -117,9 +129,60 @@ export const settings = pgTable("settings", {
   nextQuotationNumber: integer("next_quotation_number").default(1).notNull(),
 });
 
+export const catalogItems = pgTable("catalog_items", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: text("description"),
+  unit: varchar("unit", { length: 32 }),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const recurringInvoices = pgTable("recurring_invoices", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .references(() => clients.id, { onDelete: "cascade" })
+    .notNull(),
+  frequency: recurringFrequencyEnum("frequency").default("monthly").notNull(),
+  dueInDays: integer("due_in_days").default(14).notNull(),
+  taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
+  discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
+  notes: text("notes"),
+  autoSend: boolean("auto_send").default(false).notNull(),
+  active: boolean("active").default(true).notNull(),
+  nextRunDate: date("next_run_date").notNull(),
+  lastGeneratedAt: timestamp("last_generated_at"),
+  lastInvoiceId: integer("last_invoice_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const recurringInvoiceItems = pgTable("recurring_invoice_items", {
+  id: serial("id").primaryKey(),
+  recurringInvoiceId: integer("recurring_invoice_id")
+    .references(() => recurringInvoices.id, { onDelete: "cascade" })
+    .notNull(),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const recurringInvoicesRelations = relations(recurringInvoices, ({ one, many }) => ({
+  client: one(clients, { fields: [recurringInvoices.clientId], references: [clients.id] }),
+  items: many(recurringInvoiceItems),
+}));
+
+export const recurringInvoiceItemsRelations = relations(recurringInvoiceItems, ({ one }) => ({
+  recurringInvoice: one(recurringInvoices, {
+    fields: [recurringInvoiceItems.recurringInvoiceId],
+    references: [recurringInvoices.id],
+  }),
+}));
 export const clientsRelations = relations(clients, ({ many }) => ({
   invoices: many(invoices),
   quotations: many(quotations),
+  recurringInvoices: many(recurringInvoices),
 }));
 
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({

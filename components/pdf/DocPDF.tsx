@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { formatDate, formatMoney, toNumber } from "@/lib/money";
 
 const styles = StyleSheet.create({
@@ -34,6 +34,12 @@ const styles = StyleSheet.create({
   companyBlock: {
     alignItems: "flex-end",
     maxWidth: 220,
+  },
+  logo: {
+    maxWidth: 140,
+    maxHeight: 56,
+    marginBottom: 8,
+    objectFit: "contain",
   },
   companyName: {
     fontFamily: "Helvetica-Bold",
@@ -156,6 +162,7 @@ export type DocPDFProps = {
     phone?: string | null;
     address?: string | null;
     bankDetails?: string | null;
+    logoData?: string | null;
   };
 };
 
@@ -190,6 +197,7 @@ export default function DocPDF({
             <Text style={styles.stamp}>{status}</Text>
           </View>
           <View style={styles.companyBlock}>
+            {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
             <Text style={styles.companyName}>{company.companyName}</Text>
             {company.address ? <Text style={styles.small}>{company.address}</Text> : null}
             {company.email ? <Text style={styles.small}>{company.email}</Text> : null}

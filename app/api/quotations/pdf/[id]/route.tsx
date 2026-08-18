@@ -45,6 +45,7 @@ export async function GET(
         phone: settings.phone,
         address: settings.address,
         bankDetails: settings.bankDetails,
+        logoData: settings.logoData,
       }}
     />
   );

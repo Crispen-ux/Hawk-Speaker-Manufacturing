@@ -54,6 +54,7 @@ export async function GET(
         email: settings.email,
         phone: settings.phone,
         address: settings.address,
+        logoData: settings.logoData,
       }}
     />
   );

@@ -1,6 +1,7 @@
 import { getSettings } from "@/lib/numbering";
 import { updateSettings } from "@/lib/actions/settings";
 import { PageHeader, Field, inputClass, PrimaryButton, Card } from "@/components/ui";
+import LogoUploader from "@/components/LogoUploader";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,9 @@ export default async function SettingsPage() {
       <PageHeader eyebrow="Configuration" title="Settings" />
       <Card className="max-w-2xl">
         <form action={updateSettings} className="space-y-5">
+          <Field label="Logo">
+            <LogoUploader initialLogo={settings.logoData} />
+          </Field>
           <Field label="Company name">
             <input name="companyName" defaultValue={settings.companyName} required className={inputClass} />
           </Field>
