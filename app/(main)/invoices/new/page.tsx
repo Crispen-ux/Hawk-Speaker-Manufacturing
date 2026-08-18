@@ -1,0 +1,85 @@
+import { db } from "@/db";
+import { clients } from "@/db/schema";
+import { createInvoice } from "@/lib/actions/invoices";
+import { getSettings } from "@/lib/numbering";
+import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card, EmptyState, LinkButton } from "@/components/ui";
+import LineItemsEditor from "@/components/LineItemsEditor";
+
+export const dynamic = "force-dynamic";
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+function plusDaysISO(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export default async function NewInvoicePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ client?: string }>;
+}) {
+  const { client } = await searchParams;
+  const allClients = await db.select().from(clients).orderBy(clients.name);
+  const settings = await getSettings();
+
+  if (allClients.length === 0) {
+    return (
+      <div>
+        <PageHeader eyebrow="Accounts receivable" title="New invoice" />
+        <EmptyState
+          title="No clients yet"
+          hint="Add a client before you can raise an invoice against them."
+          action={<LinkButton href="/clients/new">Add a client</LinkButton>}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <PageHeader eyebrow="Accounts receivable" title="New invoice" />
+      <Card className="max-w-3xl">
+        <form action={createInvoice} className="space-y-5">
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Client">
+              <select name="clientId" required defaultValue={client ?? ""} className={inputClass}>
+                <option value="" disabled>
+                  Select client…
+                </option>
+                {allClients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Issue date">
+              <input type="date" name="issueDate" defaultValue={todayISO()} required className={inputClass} />
+            </Field>
+            <Field label="Due date">
+              <input type="date" name="dueDate" defaultValue={plusDaysISO(14)} required className={inputClass} />
+            </Field>
+          </div>
+
+          <LineItemsEditor
+            initialItems={[]}
+            initialTaxRate={settings.defaultTaxRate}
+            initialDiscount="0"
+          />
+
+          <Field label="Notes (shown on PDF)">
+            <textarea name="notes" rows={3} className={inputClass} placeholder="Payment terms, thank-you note…" />
+          </Field>
+
+          <div className="flex gap-3 pt-2">
+            <PrimaryButton type="submit">Create invoice</PrimaryButton>
+            <GhostLink href="/invoices">Cancel</GhostLink>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}

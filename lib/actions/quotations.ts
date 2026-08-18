@@ -1,0 +1,154 @@
+"use server";
+
+import { db } from "@/db";
+import { quotations, quotationItems, invoices, invoiceItems } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { nextInvoiceNumber, nextQuotationNumber } from "@/lib/numbering";
+
+type ItemInput = { description: string; quantity: string; unitPrice: string };
+
+function parseItems(raw: string): ItemInput[] {
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((it) => it && String(it.description ?? "").trim())
+      .map((it) => ({
+        description: String(it.description),
+        quantity: String(it.quantity ?? "1"),
+        unitPrice: String(it.unitPrice ?? "0"),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export async function createQuotation(formData: FormData) {
+  const clientId = Number(formData.get("clientId"));
+  const issueDate = String(formData.get("issueDate"));
+  const expiryDate = String(formData.get("expiryDate"));
+  const taxRate = String(formData.get("taxRate") ?? "0");
+  const discount = String(formData.get("discount") ?? "0");
+  const notes = String(formData.get("notes") ?? "") || null;
+  const items = parseItems(String(formData.get("items") ?? "[]"));
+
+  if (!clientId) throw new Error("Client is required");
+  if (items.length === 0) throw new Error("Add at least one line item");
+
+  const number = await nextQuotationNumber();
+
+  const [row] = await db
+    .insert(quotations)
+    .values({ number, clientId, issueDate, expiryDate, taxRate, discount, notes, status: "draft" })
+    .returning({ id: quotations.id });
+
+  await db.insert(quotationItems).values(
+    items.map((it, i) => ({
+      quotationId: row.id,
+      description: it.description,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      sortOrder: i,
+    }))
+  );
+
+  revalidatePath("/quotations");
+  redirect(`/quotations/${row.id}`);
+}
+
+export async function updateQuotation(id: number, formData: FormData) {
+  const clientId = Number(formData.get("clientId"));
+  const issueDate = String(formData.get("issueDate"));
+  const expiryDate = String(formData.get("expiryDate"));
+  const taxRate = String(formData.get("taxRate") ?? "0");
+  const discount = String(formData.get("discount") ?? "0");
+  const notes = String(formData.get("notes") ?? "") || null;
+  const items = parseItems(String(formData.get("items") ?? "[]"));
+
+  await db
+    .update(quotations)
+    .set({ clientId, issueDate, expiryDate, taxRate, discount, notes })
+    .where(eq(quotations.id, id));
+
+  await db.delete(quotationItems).where(eq(quotationItems.quotationId, id));
+  if (items.length > 0) {
+    await db.insert(quotationItems).values(
+      items.map((it, i) => ({
+        quotationId: id,
+        description: it.description,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        sortOrder: i,
+      }))
+    );
+  }
+
+  revalidatePath("/quotations");
+  revalidatePath(`/quotations/${id}`);
+  redirect(`/quotations/${id}`);
+}
+
+export async function setQuotationStatus(
+  id: number,
+  status: (typeof quotations.status.enumValues)[number]
+) {
+  await db.update(quotations).set({ status }).where(eq(quotations.id, id));
+  revalidatePath("/quotations");
+  revalidatePath(`/quotations/${id}`);
+}
+
+export async function deleteQuotation(id: number) {
+  await db.delete(quotations).where(eq(quotations.id, id));
+  revalidatePath("/quotations");
+  redirect("/quotations");
+}
+
+export async function convertToInvoice(id: number) {
+  const quote = await db.query.quotations.findFirst({
+    where: eq(quotations.id, id),
+    with: { items: true },
+  });
+  if (!quote) throw new Error("Quotation not found");
+
+  const number = await nextInvoiceNumber();
+  const today = new Date();
+  const due = new Date();
+  due.setDate(due.getDate() + 14);
+
+  const [inv] = await db
+    .insert(invoices)
+    .values({
+      number,
+      clientId: quote.clientId,
+      issueDate: today.toISOString().slice(0, 10),
+      dueDate: due.toISOString().slice(0, 10),
+      taxRate: quote.taxRate,
+      discount: quote.discount,
+      notes: quote.notes,
+      status: "draft",
+    })
+    .returning({ id: invoices.id });
+
+  if (quote.items.length > 0) {
+    await db.insert(invoiceItems).values(
+      quote.items.map((it, i) => ({
+        invoiceId: inv.id,
+        description: it.description,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        sortOrder: i,
+      }))
+    );
+  }
+
+  await db
+    .update(quotations)
+    .set({ status: "accepted", convertedInvoiceId: inv.id })
+    .where(eq(quotations.id, id));
+
+  revalidatePath("/quotations");
+  revalidatePath("/invoices");
+  redirect(`/invoices/${inv.id}`);
+}

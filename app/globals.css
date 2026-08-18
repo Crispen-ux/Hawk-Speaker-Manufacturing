@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #faf8f2;
+  --paper-dim: #f1eee3;
+  --ink: #1c2b2e;
+  --ink-soft: #4a5a5c;
+  --navy: #16242c;
+  --navy-2: #1f333d;
+  --forest: #2f5233;
+  --forest-2: #3d6b43;
+  --rust: #b23a2e;
+  --brass: #c9a54a;
+  --rule: #ded8c4;
+  --rule-strong: #c7bfa3;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-navy: var(--navy);
+  --color-navy-2: var(--navy-2);
+  --color-forest: var(--forest);
+  --color-forest-2: var(--forest-2);
+  --color-rust: var(--rust);
+  --color-brass: var(--brass);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 39px,
+    var(--rule) 39px,
+    var(--rule) 40px
+  );
+}
+
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  transform: rotate(-2deg);
+}
+
+::selection {
+  background: var(--brass);
+  color: var(--navy);
+}
+
+* {
+  scrollbar-color: var(--rule-strong) transparent;
+}
