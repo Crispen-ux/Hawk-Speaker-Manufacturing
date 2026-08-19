@@ -11,7 +11,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <Card>
       <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">{label}</div>
-      <div className={`mt-2 font-display text-3xl italic ${accent ?? "text-ink"}`}>{value}</div>
+      <div className={`mt-2 font-display text-3xl font-extrabold tracking-tight ${accent ?? "text-navy"}`}>{value}</div>
     </Card>
   );
 }
@@ -62,13 +62,13 @@ export default async function DashboardPage() {
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
         <Stat label="Outstanding" value={formatMoney(outstanding)} />
         <Stat label="Overdue" value={formatMoney(overdueTotal)} accent={overdueTotal > 0 ? "text-rust" : undefined} />
-        <Stat label="Paid this month" value={formatMoney(paidThisMonth)} accent="text-forest" />
+        <Stat label="Paid this month" value={formatMoney(paidThisMonth)} accent="text-success" />
         <Stat label="Drafts" value={String(draftCount)} />
       </div>
 
       {overdue.length > 0 && (
         <div className="mb-8">
-          <h2 className="mb-3 font-display text-lg italic text-rust">Needs attention</h2>
+        <h2 className="mb-3 font-display text-lg font-bold text-rust">Needs attention</h2>
           <div className="overflow-hidden rounded-lg border border-rust/30">
             <table className="w-full text-sm">
               <tbody>
@@ -94,7 +94,7 @@ export default async function DashboardPage() {
 
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-lg italic text-ink">Recent invoices</h2>
+          <h2 className="font-display text-lg font-bold text-navy">Recent invoices</h2>
           <Link href="/invoices" className="font-mono text-xs uppercase tracking-wide text-forest hover:underline">
             View all →
           </Link>

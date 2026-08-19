@@ -4,9 +4,16 @@ import { formatDate, formatMoney, toNumber } from "@/lib/money";
 const styles = StyleSheet.create({
   page: {
     padding: 44,
+    paddingTop: 40,
     fontSize: 10,
     fontFamily: "Helvetica",
-    color: "#1c2b2e",
+    color: "#16212E",
+  },
+  accentBar: {
+    height: 4,
+    backgroundColor: "#12B8C4",
+    marginBottom: 24,
+    marginHorizontal: -44,
   },
   headerRow: {
     flexDirection: "row",
@@ -18,18 +25,19 @@ const styles = StyleSheet.create({
     fontSize: 8,
     letterSpacing: 2,
     textTransform: "uppercase",
-    color: "#4a5a5c",
+    color: "#5B6472",
     marginBottom: 4,
   },
   docTitle: {
     fontSize: 22,
     fontFamily: "Helvetica-Bold",
+    color: "#0E2A47",
   },
   docNumber: {
     fontFamily: "Courier",
     fontSize: 11,
     marginTop: 2,
-    color: "#4a5a5c",
+    color: "#5B6472",
   },
   companyBlock: {
     alignItems: "flex-end",
@@ -45,10 +53,11 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     fontSize: 12,
     marginBottom: 2,
+    color: "#0E2A47",
   },
   small: {
     fontSize: 9,
-    color: "#4a5a5c",
+    color: "#5B6472",
     textAlign: "right",
   },
   metaRow: {
@@ -57,22 +66,22 @@ const styles = StyleSheet.create({
     marginBottom: 22,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#ded8c4",
+    borderBottomColor: "#E2E5EA",
   },
   metaBlock: { maxWidth: 240 },
   metaLabel: {
     fontSize: 8,
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    color: "#4a5a5c",
+    color: "#5B6472",
     marginBottom: 3,
   },
   metaValue: { fontSize: 10.5, marginBottom: 2 },
   table: { marginTop: 6 },
   tableHeadRow: {
     flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#1c2b2e",
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#0E2A47",
     paddingBottom: 6,
     marginBottom: 6,
   },
@@ -80,7 +89,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingVertical: 6,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#ded8c4",
+    borderBottomColor: "#E2E5EA",
   },
   colDesc: { flex: 1 },
   colQty: { width: 50, textAlign: "right" },
@@ -90,7 +99,7 @@ const styles = StyleSheet.create({
     fontSize: 8,
     letterSpacing: 1,
     textTransform: "uppercase",
-    color: "#4a5a5c",
+    color: "#5B6472",
   },
   totalsBlock: {
     marginTop: 16,
@@ -102,25 +111,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 3,
   },
-  totalsLabel: { color: "#4a5a5c" },
+  totalsLabel: { color: "#5B6472" },
   totalsValueMono: { fontFamily: "Courier" },
   grandRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 6,
     paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: "#1c2b2e",
+    borderTopWidth: 1.5,
+    borderTopColor: "#0E2A47",
   },
-  grandLabel: { fontFamily: "Helvetica-Bold", fontSize: 11 },
-  grandValue: { fontFamily: "Courier-Bold", fontSize: 11 },
+  grandLabel: { fontFamily: "Helvetica-Bold", fontSize: 11, color: "#0E2A47" },
+  grandValue: { fontFamily: "Courier-Bold", fontSize: 11, color: "#0E2A47" },
   notes: {
     marginTop: 28,
     paddingTop: 14,
     borderTopWidth: 0.5,
-    borderTopColor: "#ded8c4",
+    borderTopColor: "#E2E5EA",
     fontSize: 9,
-    color: "#4a5a5c",
+    color: "#5B6472",
     lineHeight: 1.5,
   },
   stamp: {
@@ -129,6 +138,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
     textTransform: "uppercase",
+    color: "#0E2A47",
   },
   footer: {
     position: "absolute",
@@ -136,12 +146,24 @@ const styles = StyleSheet.create({
     left: 44,
     right: 44,
     fontSize: 8,
-    color: "#4a5a5c",
+    color: "#5B6472",
     textAlign: "center",
   },
 });
 
 type Item = { description: string; quantity: string; unitPrice: string };
+
+const STATUS_COLOR: Record<string, string> = {
+  draft: "#5B6472",
+  sent: "#0E93A8",
+  paid: "#1F8A5A",
+  partial: "#12B8C4",
+  overdue: "#C0392B",
+  cancelled: "#5B6472",
+  accepted: "#1F8A5A",
+  declined: "#C0392B",
+  expired: "#5B6472",
+};
 
 export type DocPDFProps = {
   kind: "Invoice" | "Quotation";
@@ -190,11 +212,12 @@ export default function DocPDF({
   return (
     <Document title={`${kind} ${number}`}>
       <Page size="A4" style={styles.page}>
+        <View style={styles.accentBar} />
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.kicker}>{kind}</Text>
             <Text style={styles.docTitle}>{number}</Text>
-            <Text style={styles.stamp}>{status}</Text>
+            <Text style={[styles.stamp, { color: STATUS_COLOR[status] ?? "#0E2A47" }]}>{status}</Text>
           </View>
           <View style={styles.companyBlock}>
             {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
@@ -265,7 +288,7 @@ export default function DocPDF({
                 <Text style={styles.totalsValueMono}>{formatMoney(paid)}</Text>
               </View>
               <View style={styles.totalsRow}>
-                <Text style={[styles.totalsLabel, { fontFamily: "Helvetica-Bold", color: "#1c2b2e" }]}>
+                <Text style={[styles.totalsLabel, { fontFamily: "Helvetica-Bold", color: "#16212E" }]}>
                   Balance due
                 </Text>
                 <Text style={[styles.totalsValueMono, { fontFamily: "Courier-Bold" }]}>

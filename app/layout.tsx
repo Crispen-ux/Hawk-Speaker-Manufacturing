@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Manrope, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
-  weight: ["500", "600"],
-  style: ["normal", "italic"],
+  weight: ["600", "700", "800"],
 });
 
 const plexSans = IBM_Plex_Sans({
@@ -22,8 +21,9 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ledger — Invoicing",
+  title: "Cretek Group — Invoicing",
   description: "Invoices, quotations and statements.",
+  icons: { icon: "/favicon.png" },
 };
 
 export default function RootLayout({
@@ -33,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}>
+      <body className={`${manrope.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}>
         {children}
       </body>
     </html>

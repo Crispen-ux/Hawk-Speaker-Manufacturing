@@ -15,7 +15,7 @@ export function PageHeader({
         <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
           {eyebrow}
         </div>
-        <h1 className="font-display text-3xl italic text-ink">{title}</h1>
+        <h1 className="font-display text-[28px] font-extrabold tracking-tight text-navy">{title}</h1>
       </div>
       {action}
     </div>
@@ -29,7 +29,7 @@ export function PrimaryButton({
   return (
     <button
       {...props}
-      className={`rounded-md bg-forest px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-90 disabled:opacity-50 ${props.className ?? ""}`}
+      className={`rounded-md bg-navy px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-navy-2 disabled:opacity-50 ${props.className ?? ""}`}
     >
       {children}
     </button>
@@ -40,7 +40,7 @@ export function LinkButton({ href, children }: { href: string; children: React.R
   return (
     <Link
       href={href}
-      className="inline-block rounded-md bg-forest px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-90"
+      className="inline-block rounded-md bg-navy px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-navy-2"
     >
       {children}
     </Link>
@@ -60,14 +60,14 @@ export function GhostLink({ href, children }: { href: string; children: React.Re
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-lg border border-rule bg-white/60 p-6 ${className}`}>{children}</div>
+    <div className={`card-elevated rounded-lg border border-rule bg-white p-6 ${className}`}>{children}</div>
   );
 }
 
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-dashed border-rule-strong px-8 py-14 text-center">
-      <p className="font-display text-xl italic text-ink-soft">{title}</p>
+      <p className="font-display text-lg font-bold text-ink">{title}</p>
       {hint && <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">{hint}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
@@ -92,4 +92,4 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full rounded-md border border-rule-strong bg-white px-3 py-2 text-sm text-ink outline-none focus:border-forest";
+  "w-full rounded-md border border-rule-strong bg-white px-3 py-2 text-sm text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/15";

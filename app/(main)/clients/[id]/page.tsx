@@ -66,7 +66,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
         <div className="space-y-8">
           <div>
-            <h2 className="mb-3 font-display text-lg italic text-ink">Invoices</h2>
+            <h2 className="mb-3 font-display text-lg font-bold text-navy">Invoices</h2>
             {clientInvoices.length === 0 ? (
               <p className="text-sm text-ink-soft">No invoices for this client yet.</p>
             ) : (
@@ -93,7 +93,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           </div>
 
           <div>
-            <h2 className="mb-3 font-display text-lg italic text-ink">Quotations</h2>
+            <h2 className="mb-3 font-display text-lg font-bold text-navy">Quotations</h2>
             {clientQuotations.length === 0 ? (
               <p className="text-sm text-ink-soft">No quotations for this client yet.</p>
             ) : (

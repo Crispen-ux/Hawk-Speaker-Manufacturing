@@ -1,0 +1,11 @@
+<svg width="620" height="200" viewBox="0 0 620 200" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path d="M149.8,141.8 A65,65 0 0,1 59.1,150.5" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round"/>
+    <path d="M54.0,146.0 A65,65 0 0,1 54.0,54.0" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round"/>
+    <path d="M59.1,49.5 A65,65 0 0,1 149.8,58.2" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round"/>
+    <circle cx="165" cy="100" r="17" fill="#12B8C4"/>
+  </g>
+
+  <text x="228" y="103" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="700" font-size="54" letter-spacing="1.5" fill="#FFFFFF">CRETEK</text>
+  <text x="230" y="134" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="600" font-size="21" letter-spacing="8" fill="#12B8C4">GROUP</text>
+</svg>

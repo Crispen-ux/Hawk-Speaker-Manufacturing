@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function LoginForm() {
@@ -9,6 +9,17 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [branding, setBranding] = useState<{ logoData: string | null; companyName: string }>({
+    logoData: null,
+    companyName: "Cretek Group",
+  });
+
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((r) => r.json())
+      .then((data) => setBranding(data))
+      .catch(() => {});
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,13 +39,16 @@ function LoginForm() {
     }
   }
 
+  const logoSrc = branding.logoData || "/cretek-logo-reversed.svg";
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-navy px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="font-display text-4xl italic text-paper">Ledger</div>
-          <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.25em] text-paper/50">
-            Invoicing &amp; accounts
+        <div className="mb-10 flex flex-col items-center text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoSrc} alt={branding.companyName} className="h-10 w-auto max-w-[220px] object-contain" />
+          <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/45">
+            Invoicing &amp; billing
           </div>
         </div>
         <form
@@ -49,16 +63,16 @@ function LoginForm() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-white/15 bg-navy px-3 py-2.5 text-paper outline-none focus:border-brass"
+            className="w-full rounded-md border border-white/15 bg-navy px-3 py-2.5 text-paper outline-none focus:border-forest-2"
             placeholder="••••••••"
           />
           {error && <p className="mt-2 text-sm text-rust">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="mt-5 w-full rounded-md bg-brass py-2.5 text-sm font-semibold text-navy transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="mt-5 w-full rounded-md bg-forest-2 py-2.5 text-sm font-semibold text-navy transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Checking…" : "Open the books"}
+            {loading ? "Checking…" : "Sign in"}
           </button>
         </form>
       </div>

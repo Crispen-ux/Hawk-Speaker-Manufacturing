@@ -4,9 +4,16 @@ import { formatDate, formatMoney } from "@/lib/money";
 const styles = StyleSheet.create({
   page: {
     padding: 44,
+    paddingTop: 40,
     fontSize: 10,
     fontFamily: "Helvetica",
-    color: "#1c2b2e",
+    color: "#16212E",
+  },
+  accentBar: {
+    height: 4,
+    backgroundColor: "#12B8C4",
+    marginBottom: 24,
+    marginHorizontal: -44,
   },
   headerRow: {
     flexDirection: "row",
@@ -18,10 +25,10 @@ const styles = StyleSheet.create({
     fontSize: 8,
     letterSpacing: 2,
     textTransform: "uppercase",
-    color: "#4a5a5c",
+    color: "#5B6472",
     marginBottom: 4,
   },
-  docTitle: { fontSize: 22, fontFamily: "Helvetica-Bold" },
+  docTitle: { fontSize: 22, fontFamily: "Helvetica-Bold", color: "#0E2A47" },
   companyBlock: { alignItems: "flex-end", maxWidth: 220 },
   logo: {
     maxWidth: 140,
@@ -29,30 +36,30 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     objectFit: "contain",
   },
-  companyName: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 2 },
-  small: { fontSize: 9, color: "#4a5a5c", textAlign: "right" },
+  companyName: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 2, color: "#0E2A47" },
+  small: { fontSize: 9, color: "#5B6472", textAlign: "right" },
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 22,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#ded8c4",
+    borderBottomColor: "#E2E5EA",
   },
   metaBlock: { maxWidth: 240 },
   metaLabel: {
     fontSize: 8,
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    color: "#4a5a5c",
+    color: "#5B6472",
     marginBottom: 3,
   },
   metaValue: { fontSize: 10.5, marginBottom: 2 },
   table: { marginTop: 6 },
   tableHeadRow: {
     flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#1c2b2e",
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#0E2A47",
     paddingBottom: 6,
     marginBottom: 6,
   },
@@ -60,7 +67,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingVertical: 6,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#ded8c4",
+    borderBottomColor: "#E2E5EA",
   },
   colDate: { width: 70 },
   colDesc: { flex: 1 },
@@ -68,28 +75,28 @@ const styles = StyleSheet.create({
   colCharge: { width: 75, textAlign: "right" },
   colPaid: { width: 75, textAlign: "right" },
   colBalance: { width: 75, textAlign: "right" },
-  thText: { fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "#4a5a5c" },
+  thText: { fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "#5B6472" },
   mono: { fontFamily: "Courier" },
   totalsBlock: { marginTop: 16, alignSelf: "flex-end", width: 240 },
   totalsRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
-  totalsLabel: { color: "#4a5a5c" },
+  totalsLabel: { color: "#5B6472" },
   grandRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 6,
     paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: "#1c2b2e",
+    borderTopWidth: 1.5,
+    borderTopColor: "#0E2A47",
   },
-  grandLabel: { fontFamily: "Helvetica-Bold", fontSize: 11 },
-  grandValue: { fontFamily: "Courier-Bold", fontSize: 11 },
+  grandLabel: { fontFamily: "Helvetica-Bold", fontSize: 11, color: "#0E2A47" },
+  grandValue: { fontFamily: "Courier-Bold", fontSize: 11, color: "#0E2A47" },
   footer: {
     position: "absolute",
     bottom: 32,
     left: 44,
     right: 44,
     fontSize: 8,
-    color: "#4a5a5c",
+    color: "#5B6472",
     textAlign: "center",
   },
 });
@@ -128,6 +135,7 @@ export default function StatementPDF({
   return (
     <Document title={`Statement — ${client.name}`}>
       <Page size="A4" style={styles.page}>
+        <View style={styles.accentBar} />
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.kicker}>Statement of account</Text>
@@ -167,7 +175,7 @@ export default function StatementPDF({
           </View>
           {rows.length === 0 ? (
             <View style={styles.tableRow}>
-              <Text style={{ color: "#4a5a5c" }}>No invoices in this period.</Text>
+              <Text style={{ color: "#5B6472" }}>No invoices in this period.</Text>
             </View>
           ) : (
             rows.map((r, i) => (

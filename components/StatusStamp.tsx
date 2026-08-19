@@ -1,11 +1,11 @@
 const COLORS: Record<string, string> = {
   draft: "text-ink-soft",
   sent: "text-forest",
-  paid: "text-forest",
-  partial: "text-brass",
+  paid: "text-success",
+  partial: "text-forest-2",
   overdue: "text-rust",
   cancelled: "text-ink-soft",
-  accepted: "text-forest",
+  accepted: "text-success",
   declined: "text-rust",
   expired: "text-ink-soft",
 };

@@ -126,7 +126,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           </Card>
 
           <div className="mt-6">
-            <h2 className="mb-3 font-display text-lg italic text-ink">Payments</h2>
+            <h2 className="mb-3 font-display text-lg font-bold text-navy">Payments</h2>
             {invoice.payments.length === 0 ? (
               <p className="text-sm text-ink-soft">No payments recorded yet.</p>
             ) : (
