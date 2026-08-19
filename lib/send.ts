@@ -4,24 +4,27 @@ import { eq, and, gte, lte } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
 import { renderDocPDFBuffer, renderStatementPDFBuffer } from "@/lib/pdf-render";
 import { sendEmail } from "@/lib/email";
-import { calcTotals, formatMoney, toNumber } from "@/lib/money";
+import { calcTotals, formatMoney, formatDate, toNumber } from "@/lib/money";
+import { buildDocumentEmail, type EmailCompany } from "@/lib/email-templates";
+import { getBaseUrl } from "@/lib/base-url";
 
-function emailBody({
-  greeting,
-  message,
-  companyName,
-}: {
-  greeting: string;
-  message?: string;
+function companyForEmail(settings: {
   companyName: string;
-}) {
-  const body = message
-    ? message.trim().replace(/\n/g, "<br/>")
-    : greeting;
-  return `<div style="font-family: sans-serif; font-size: 14px; color: #1c2b2e; line-height: 1.6;">
-    <p>${body}</p>
-    <p style="color:#4a5a5c;">Thank you,<br/>${companyName}</p>
-  </div>`;
+  address: string | null;
+  email: string | null;
+  phone: string | null;
+  bankDetails: string | null;
+  logoData: string | null;
+}): EmailCompany {
+  const baseUrl = getBaseUrl();
+  return {
+    name: settings.companyName,
+    address: settings.address,
+    email: settings.email,
+    phone: settings.phone,
+    bankDetails: settings.bankDetails,
+    logoUrl: settings.logoData && baseUrl ? `${baseUrl}/api/settings/logo` : null,
+  };
 }
 
 export async function sendInvoiceByEmail(invoiceId: number, to: string, message?: string) {
@@ -34,6 +37,7 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
   const settings = await getSettings();
   const paid = invoice.payments.reduce((s, p) => s + toNumber(p.amount), 0);
   const { total } = calcTotals(invoice.items, invoice.taxRate, invoice.discount);
+  const balance = Math.max(total - paid, 0);
 
   const buffer = await renderDocPDFBuffer({
     kind: "Invoice",
@@ -62,14 +66,25 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
     },
   });
 
+  const html = buildDocumentEmail({
+    kicker: "Invoice",
+    heading: `Invoice ${invoice.number}`,
+    greeting: `Please find attached invoice ${invoice.number} for ${formatMoney(total)}, due ${formatDate(invoice.dueDate)}.`,
+    message,
+    detailRows: [
+      { label: "Invoice number", value: invoice.number },
+      { label: "Issue date", value: formatDate(invoice.issueDate) },
+      { label: "Due date", value: formatDate(invoice.dueDate) },
+    ],
+    highlight: { label: paid > 0 ? "Balance due" : "Amount due", value: formatMoney(balance) },
+    attachmentLabel: `${invoice.number}.pdf`,
+    company: companyForEmail(settings),
+  });
+
   await sendEmail({
     to,
     subject: `Invoice ${invoice.number} from ${settings.companyName}`,
-    html: emailBody({
-      greeting: `Please find attached invoice ${invoice.number} for ${formatMoney(total)}, due ${invoice.dueDate}.`,
-      message,
-      companyName: settings.companyName,
-    }),
+    html,
     attachments: [{ filename: `${invoice.number}.pdf`, content: buffer.toString("base64") }],
   });
 
@@ -115,14 +130,25 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
     },
   });
 
+  const html = buildDocumentEmail({
+    kicker: "Quotation",
+    heading: `Quotation ${quotation.number}`,
+    greeting: `Please find attached quotation ${quotation.number} for ${formatMoney(total)}, valid until ${formatDate(quotation.expiryDate)}.`,
+    message,
+    detailRows: [
+      { label: "Quotation number", value: quotation.number },
+      { label: "Issue date", value: formatDate(quotation.issueDate) },
+      { label: "Valid until", value: formatDate(quotation.expiryDate) },
+    ],
+    highlight: { label: "Total", value: formatMoney(total) },
+    attachmentLabel: `${quotation.number}.pdf`,
+    company: companyForEmail(settings),
+  });
+
   await sendEmail({
     to,
     subject: `Quotation ${quotation.number} from ${settings.companyName}`,
-    html: emailBody({
-      greeting: `Please find attached quotation ${quotation.number} for ${formatMoney(total)}, valid until ${quotation.expiryDate}.`,
-      message,
-      companyName: settings.companyName,
-    }),
+    html,
     attachments: [{ filename: `${quotation.number}.pdf`, content: buffer.toString("base64") }],
   });
 
@@ -157,6 +183,7 @@ export async function sendStatementByEmail(
   });
 
   const outstanding = statementRows.reduce((s, r) => s + Math.max(r.total - r.paid, 0), 0);
+  const clientName = client.name.replace(/\s+/g, "-");
 
   const buffer = await renderStatementPDFBuffer({
     client: { name: client.name, email: client.email, address: client.address },
@@ -172,19 +199,24 @@ export async function sendStatementByEmail(
     },
   });
 
+  const html = buildDocumentEmail({
+    kicker: "Statement of account",
+    heading: `Statement for ${client.name}`,
+    greeting: `Please find attached your statement of account for ${formatDate(fromDate)} to ${formatDate(toDate)}.`,
+    message,
+    detailRows: [
+      { label: "Period", value: `${formatDate(fromDate)} — ${formatDate(toDate)}` },
+      { label: "Invoices included", value: String(statementRows.length) },
+    ],
+    highlight: { label: "Outstanding balance", value: formatMoney(outstanding) },
+    attachmentLabel: `statement-${clientName}.pdf`,
+    company: companyForEmail(settings),
+  });
+
   await sendEmail({
     to,
     subject: `Statement of account from ${settings.companyName}`,
-    html: `<div style="font-family: sans-serif; font-size: 14px; color: #1c2b2e; line-height: 1.6;">
-      <p>${
-        message
-          ? message.trim().replace(/\n/g, "<br/>")
-          : `Please find attached your statement of account for ${fromDate} to ${toDate}. Outstanding balance: ${formatMoney(outstanding)}.`
-      }</p>
-      <p style="color:#4a5a5c;">Thank you,<br/>${settings.companyName}</p>
-    </div>`,
-    attachments: [
-      { filename: `statement-${client.name.replace(/\s+/g, "-")}.pdf`, content: buffer.toString("base64") },
-    ],
+    html,
+    attachments: [{ filename: `statement-${clientName}.pdf`, content: buffer.toString("base64") }],
   });
 }

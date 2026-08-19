@@ -55,6 +55,10 @@ appear on every PDF and email.
    - `DATABASE_URL` — your Neon/Postgres pooled connection string
    - `APP_PASSWORD` — the password you'll use to log in
    - `RESEND_API_KEY` and `EMAIL_FROM` — for sending documents by email
+   - `APP_URL` — your deployed URL (e.g. `https://invoicing.cretekgroup.com`).
+     Only needed if your logo isn't showing up inside sent emails — Vercel
+     usually sets this automatically, but a custom domain may need it spelled
+     out explicitly.
    - `CRON_SECRET` — a random string (e.g. `openssl rand -hex 32`),
      needed for recurring invoices (see below)
 4. Deploy.
