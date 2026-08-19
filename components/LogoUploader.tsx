@@ -30,7 +30,20 @@ function resizeToDataUrl(file: File): Promise<string> {
   });
 }
 
-export default function LogoUploader({ initialLogo }: { initialLogo: string | null }) {
+export default function LogoUploader({
+  initialLogo,
+  fieldName = "logoData",
+  removeFieldName = "removeLogo",
+  previewBg = "light",
+}: {
+  initialLogo: string | null;
+  /** form field name the resulting data URI is submitted under */
+  fieldName?: string;
+  /** form field name used to signal explicit removal */
+  removeFieldName?: string;
+  /** preview tile background — use "dark" for logos meant for dark surfaces (e.g. a white/reversed mark) */
+  previewBg?: "light" | "dark";
+}) {
   const [preview, setPreview] = useState<string | null>(initialLogo);
   const [logoData, setLogoData] = useState<string>("");
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -64,16 +77,24 @@ export default function LogoUploader({ initialLogo }: { initialLogo: string | nu
 
   return (
     <div>
-      {logoData && <input type="hidden" name="logoData" value={logoData} />}
-      {removeLogo && <input type="hidden" name="removeLogo" value="1" />}
+      {logoData && <input type="hidden" name={fieldName} value={logoData} />}
+      {removeLogo && <input type="hidden" name={removeFieldName} value="1" />}
 
       <div className="flex items-center gap-5">
-        <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded-md border border-dashed border-rule-strong bg-paper-dim">
+        <div
+          className={`flex h-20 w-32 items-center justify-center overflow-hidden rounded-md border border-dashed ${
+            previewBg === "dark" ? "border-navy-2 bg-navy" : "border-rule-strong bg-paper-dim"
+          }`}
+        >
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview} alt="Logo preview" className="max-h-full max-w-full object-contain p-2" />
           ) : (
-            <span className="px-2 text-center font-mono text-[10px] uppercase tracking-wide text-ink-soft">
+            <span
+              className={`px-2 text-center font-mono text-[10px] uppercase tracking-wide ${
+                previewBg === "dark" ? "text-paper/40" : "text-ink-soft"
+              }`}
+            >
               No logo
             </span>
           )}

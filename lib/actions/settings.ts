@@ -8,15 +8,22 @@ import { revalidatePath } from "next/cache";
 export async function updateSettings(formData: FormData) {
   const logoData = formData.get("logoData");
   const removeLogo = formData.get("removeLogo") === "1";
+  const logoDarkData = formData.get("logoDarkData");
+  const removeLogoDark = formData.get("removeLogoDark") === "1";
 
-  // logoData is only sent (as a data: URI string) when the user picked a new
-  // file; when unchanged, the hidden field is omitted so we keep the existing
-  // logo. "removeLogo" clears it explicitly.
-  const logoPatch: { logoData?: string | null } = {};
+  // logoData/logoDarkData are only sent (as data: URI strings) when the user
+  // picked a new file; when unchanged, the hidden field is omitted so we keep
+  // the existing logo. The "remove" flags clear them explicitly.
+  const logoPatch: { logoData?: string | null; logoDarkData?: string | null } = {};
   if (removeLogo) {
     logoPatch.logoData = null;
   } else if (typeof logoData === "string" && logoData.startsWith("data:")) {
     logoPatch.logoData = logoData;
+  }
+  if (removeLogoDark) {
+    logoPatch.logoDarkData = null;
+  } else if (typeof logoDarkData === "string" && logoDarkData.startsWith("data:")) {
+    logoPatch.logoDarkData = logoDarkData;
   }
 
   const base = {

@@ -13,9 +13,25 @@ export default async function SettingsPage() {
       <PageHeader eyebrow="Configuration" title="Settings" />
       <Card className="max-w-2xl">
         <form action={updateSettings} className="space-y-5">
-          <Field label="Logo">
-            <LogoUploader initialLogo={settings.logoData} />
-          </Field>
+          <div className="grid grid-cols-2 gap-6">
+            <Field label="Logo — light backgrounds (PDFs, documents)">
+              <LogoUploader initialLogo={settings.logoData} fieldName="logoData" removeFieldName="removeLogo" previewBg="light" />
+            </Field>
+            <Field label="Logo — dark backgrounds (sidebar, login screen)">
+              <LogoUploader
+                initialLogo={settings.logoDarkData}
+                fieldName="logoDarkData"
+                removeFieldName="removeLogoDark"
+                previewBg="dark"
+              />
+            </Field>
+          </div>
+          <p className="-mt-2 text-xs text-ink-soft">
+            Use your regular (navy/full-colour) logo for the light-background slot, and a white or reversed
+            version for the dark-background slot — otherwise a white logo will disappear on white PDF pages,
+            or a dark logo will disappear on the navy sidebar. If you only upload one, it's used everywhere and
+            may not show up well on one of the two.
+          </p>
           <Field label="Company name">
             <input name="companyName" defaultValue={settings.companyName} required className={inputClass} />
           </Field>

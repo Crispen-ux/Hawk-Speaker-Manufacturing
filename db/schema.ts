@@ -122,6 +122,7 @@ export const settings = pgTable("settings", {
   address: text("address"),
   bankDetails: text("bank_details"),
   logoData: text("logo_data"),
+  logoDarkData: text("logo_dark_data"),
   defaultTaxRate: numeric("default_tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
   invoicePrefix: varchar("invoice_prefix", { length: 16 }).default("INV-").notNull(),
   quotationPrefix: varchar("quotation_prefix", { length: 16 }).default("QUO-").notNull(),

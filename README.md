@@ -112,10 +112,13 @@ trigger it.
 
 - **Branding**: this build ships pre-branded for Cretek Group — the sidebar
   and login screen fall back to the bundled logo (`public/cretek-logo-reversed.svg`)
-  and the navy/cyan palette until you upload a different logo in **Settings**.
-  Uploading a logo there overrides the bundled one everywhere (app UI, PDFs).
-  The palette itself lives in `app/globals.css` as CSS variables if you ever
-  need to adjust it further.
+  and the navy/cyan palette until you upload logos in **Settings**. There are
+  two separate logo slots: one for light backgrounds (used on PDFs) and one
+  for dark backgrounds (used in the sidebar and login screen) — upload your
+  full-colour/navy mark to the first and a white/reversed version to the
+  second, so neither disappears against its background. The palette itself
+  lives in `app/globals.css` as CSS variables if you ever need to adjust it
+  further.
 - **Auth** is a single shared password (no per-user accounts) stored as an
   HMAC-signed cookie — a good fit for "just me, a few devices." If you
   later want multiple named users, that's a bigger change (real auth

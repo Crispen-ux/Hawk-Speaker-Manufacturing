@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -12,6 +13,8 @@ import {
   Package,
   Settings as SettingsIcon,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 
 const links = [
@@ -25,27 +28,21 @@ const links = [
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-export default function Sidebar({
-  logoData,
-  companyName,
+function SidebarContent({
+  logoSrc,
+  name,
+  pathname,
+  onNavigate,
+  onLogout,
 }: {
-  logoData?: string | null;
-  companyName?: string;
+  logoSrc: string;
+  name: string;
+  pathname: string;
+  onNavigate?: () => void;
+  onLogout: () => void;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
-  }
-
-  const logoSrc = logoData || "/cretek-logo-reversed.svg";
-  const name = companyName || "Cretek Group";
-
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col bg-navy text-paper">
+    <div className="flex h-full w-64 flex-col bg-navy text-paper">
       <div className="border-b border-white/10 px-6 py-7">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={logoSrc} alt={name} className="h-8 w-auto max-w-[170px] object-contain object-left" />
@@ -53,7 +50,7 @@ export default function Sidebar({
           Invoicing &amp; billing
         </div>
       </div>
-      <nav className="flex-1 space-y-0.5 px-3 py-4">
+      <nav className="flex-1 overflow-y-auto space-y-0.5 px-3 py-4">
         {links.map((l) => {
           const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
           const Icon = l.icon;
@@ -61,6 +58,7 @@ export default function Sidebar({
             <Link
               key={l.href}
               href={l.href}
+              onClick={onNavigate}
               className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
                 active
                   ? "bg-white/10 font-medium text-paper"
@@ -75,13 +73,103 @@ export default function Sidebar({
       </nav>
       <div className="border-t border-white/10 px-3 py-4">
         <button
-          onClick={logout}
+          onClick={onLogout}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-paper/50 transition-colors hover:bg-white/5 hover:text-paper/90"
         >
           <LogOut size={16} strokeWidth={2} className="text-paper/40" />
           Sign out
         </button>
       </div>
-    </aside>
+    </div>
+  );
+}
+
+export default function Sidebar({
+  logoData,
+  companyName,
+}: {
+  logoData?: string | null;
+  companyName?: string;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Lock body scroll while the mobile drawer is open.
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
+  const logoSrc = logoData || "/cretek-logo-reversed.svg";
+  const name = companyName || "Cretek Group";
+
+  return (
+    <>
+      {/* Desktop rail: pinned to the viewport height, independent of page scroll length */}
+      <aside className="sticky top-0 hidden h-dvh shrink-0 md:block">
+        <SidebarContent logoSrc={logoSrc} name={name} pathname={pathname} onLogout={logout} />
+      </aside>
+
+      {/* Mobile top bar */}
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-navy px-4 py-3 text-paper md:hidden">
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
+          className="rounded-md p-1.5 text-paper/80 hover:bg-white/10"
+        >
+          <Menu size={22} strokeWidth={2} />
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logoSrc} alt={name} className="h-6 w-auto max-w-[140px] object-contain" />
+        <div className="w-8" />
+      </div>
+
+      {/* Mobile drawer */}
+      {open && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="absolute inset-y-0 left-0 h-dvh w-64 shadow-2xl">
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-end border-b border-white/10 bg-navy px-3 py-2">
+                <button
+                  onClick={() => setOpen(false)}
+                  aria-label="Close menu"
+                  className="rounded-md p-1.5 text-paper/70 hover:bg-white/10"
+                >
+                  <X size={20} strokeWidth={2} />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1">
+                <SidebarContent
+                  logoSrc={logoSrc}
+                  name={name}
+                  pathname={pathname}
+                  onNavigate={() => setOpen(false)}
+                  onLogout={logout}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
