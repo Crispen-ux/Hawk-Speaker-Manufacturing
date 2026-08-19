@@ -28,6 +28,7 @@ export function buildDocumentEmail({
   heading,
   greeting,
   message,
+  recipientName,
   detailRows,
   highlight,
   attachmentLabel,
@@ -37,12 +38,14 @@ export function buildDocumentEmail({
   heading: string;
   greeting: string;
   message?: string;
+  recipientName?: string | null;
   detailRows: DetailRow[];
   highlight: DetailRow;
   attachmentLabel: string;
   company: EmailCompany;
 }) {
   const bodyText = message ? escapeHtml(message.trim()).replace(/\n/g, "<br/>") : escapeHtml(greeting);
+  const salutation = recipientName ? `Good day ${escapeHtml(recipientName)},` : "Good day,";
 
   const detailRowsHtml = detailRows
     .map(
@@ -96,7 +99,9 @@ export function buildDocumentEmail({
             <td style="padding:0 40px;">
               <p style="margin:0 0 4px; font-family:Arial,Helvetica,sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#5B6472;">${escapeHtml(kicker)}</p>
               <h1 style="margin:0 0 20px; font-family:Arial,Helvetica,sans-serif; font-size:20px; color:#0E2A47;">${escapeHtml(heading)}</h1>
-              <p style="margin:0 0 24px; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1.6; color:#16212E;">${bodyText}</p>
+              <p style="margin:0 0 16px; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1.6; color:#16212E;">${salutation}</p>
+              <p style="margin:0 0 20px; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1.6; color:#16212E;">${bodyText}</p>
+              <p style="margin:0 0 24px; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1.6; color:#16212E;">Thank you,<br/>${escapeHtml(company.name)}</p>
             </td>
           </tr>
 

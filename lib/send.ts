@@ -71,6 +71,7 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
     heading: `Invoice ${invoice.number}`,
     greeting: `Please find attached invoice ${invoice.number} for ${formatMoney(total)}, due ${formatDate(invoice.dueDate)}.`,
     message,
+    recipientName: invoice.client?.name,
     detailRows: [
       { label: "Invoice number", value: invoice.number },
       { label: "Issue date", value: formatDate(invoice.issueDate) },
@@ -135,6 +136,7 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
     heading: `Quotation ${quotation.number}`,
     greeting: `Please find attached quotation ${quotation.number} for ${formatMoney(total)}, valid until ${formatDate(quotation.expiryDate)}.`,
     message,
+    recipientName: quotation.client?.name,
     detailRows: [
       { label: "Quotation number", value: quotation.number },
       { label: "Issue date", value: formatDate(quotation.issueDate) },
@@ -204,6 +206,7 @@ export async function sendStatementByEmail(
     heading: `Statement for ${client.name}`,
     greeting: `Please find attached your statement of account for ${formatDate(fromDate)} to ${formatDate(toDate)}.`,
     message,
+    recipientName: client.name,
     detailRows: [
       { label: "Period", value: `${formatDate(fromDate)} — ${formatDate(toDate)}` },
       { label: "Invoices included", value: String(statementRows.length) },
