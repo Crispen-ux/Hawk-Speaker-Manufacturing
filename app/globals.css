@@ -35,6 +35,11 @@
   --font-mono: var(--font-plex-mono);
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   background: var(--paper);
   color: var(--ink);
