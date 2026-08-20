@@ -219,6 +219,12 @@ export default function DocPDF({
   extraMeta,
   company,
 }: DocPDFProps) {
+  // Banking details only make sense on documents that ask the recipient to
+  // pay you. A Purchase Order pays a supplier (wrong direction), and Job
+  // Cards / Delivery Notes aren't bills yet — so bank details are withheld
+  // there even if the company has them configured, to avoid confusion.
+  const showBankDetails = kind === "Invoice" || kind === "Quotation";
+
   const subtotal = items.reduce((s, it) => s + toNumber(it.quantity) * toNumber(it.unitPrice), 0);
   const afterDiscount = Math.max(subtotal - toNumber(discount), 0);
   const tax = afterDiscount * (toNumber(taxRate) / 100);
@@ -269,6 +275,7 @@ export default function DocPDF({
           </View>
         </View>
 
+        {items.length > 0 && (
         <View style={styles.table}>
           <View style={styles.tableHeadRow}>
             <Text style={[styles.colDesc, styles.thText]}>Description</Text>
@@ -291,6 +298,7 @@ export default function DocPDF({
             </View>
           ))}
         </View>
+        )}
 
         {showPricing && (
         <View style={styles.totalsBlock}>
@@ -337,7 +345,7 @@ export default function DocPDF({
           </View>
         ) : null}
 
-        {company.bankDetails ? (
+        {company.bankDetails && showBankDetails ? (
           <View style={styles.notes}>
             <Text style={styles.metaLabel}>Payment details</Text>
             <Text>{company.bankDetails}</Text>
