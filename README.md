@@ -89,12 +89,25 @@ by the single password you set.
   hosting plan, an hourly rate, a package) with a default price, and add
   them into any invoice, quotation, or recurring invoice in one click
   instead of retyping line items.
+- **Job cards** — open a job card for a client with a technician,
+  equipment/asset reference, and a description of the work; log labour and
+  parts as line items as the job progresses; **convert to invoice** in one
+  click once it's done. PDF download and send by email.
+- **Purchase orders** — raise orders against **suppliers** (a separate
+  vendor address book from clients), with the same line-item/tax/discount
+  handling as invoices, a status flow from draft through received, PDF
+  download and send by email.
+- **Delivery notes** — record what was physically delivered to a client
+  (description + quantity, no pricing — this is proof of delivery, not a
+  bill), who delivered it and who signed for it, optionally linked to the
+  invoice it relates to. PDF download and send by email.
 - **Statements** — per-client account statement over a date range, PDF
   download or send by email
 - **Dashboard** — outstanding balance, overdue total, paid this month,
   drafts, recent activity
-- **Settings** — company info, logo, banking details, default tax rate,
-  invoice/quotation number prefixes
+- **Settings** — company info, logos, banking details, default tax rate,
+  and number prefixes for every document type (invoices, quotations,
+  purchase orders, job cards, delivery notes)
 
 ## How recurring billing works
 

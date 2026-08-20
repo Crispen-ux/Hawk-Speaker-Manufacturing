@@ -36,6 +36,24 @@ export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
   "yearly",
 ]);
 
+export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
+  "draft",
+  "sent",
+  "confirmed",
+  "received",
+  "cancelled",
+]);
+
+export const jobCardStatusEnum = pgEnum("job_card_status", [
+  "open",
+  "in_progress",
+  "completed",
+  "invoiced",
+  "cancelled",
+]);
+
+export const deliveryNoteStatusEnum = pgEnum("delivery_note_status", ["draft", "delivered"]);
+
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 256 }).notNull(),
@@ -126,8 +144,14 @@ export const settings = pgTable("settings", {
   defaultTaxRate: numeric("default_tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
   invoicePrefix: varchar("invoice_prefix", { length: 16 }).default("INV-").notNull(),
   quotationPrefix: varchar("quotation_prefix", { length: 16 }).default("QUO-").notNull(),
+  purchaseOrderPrefix: varchar("purchase_order_prefix", { length: 16 }).default("PO-").notNull(),
+  jobCardPrefix: varchar("job_card_prefix", { length: 16 }).default("JOB-").notNull(),
+  deliveryNotePrefix: varchar("delivery_note_prefix", { length: 16 }).default("DN-").notNull(),
   nextInvoiceNumber: integer("next_invoice_number").default(1).notNull(),
   nextQuotationNumber: integer("next_quotation_number").default(1).notNull(),
+  nextPurchaseOrderNumber: integer("next_purchase_order_number").default(1).notNull(),
+  nextJobCardNumber: integer("next_job_card_number").default(1).notNull(),
+  nextDeliveryNoteNumber: integer("next_delivery_note_number").default(1).notNull(),
 });
 
 export const catalogItems = pgTable("catalog_items", {
@@ -184,6 +208,8 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   invoices: many(invoices),
   quotations: many(quotations),
   recurringInvoices: many(recurringInvoices),
+  jobCards: many(jobCards),
+  deliveryNotes: many(deliveryNotes),
 }));
 
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
@@ -207,4 +233,144 @@ export const quotationsRelations = relations(quotations, ({ one, many }) => ({
 
 export const quotationItemsRelations = relations(quotationItems, ({ one }) => ({
   quotation: one(quotations, { fields: [quotationItems.quotationId], references: [quotations.id] }),
+}));
+
+// ---------- Suppliers ----------
+
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  email: varchar("email", { length: 256 }),
+  phone: varchar("phone", { length: 64 }),
+  address: text("address"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const suppliersRelations = relations(suppliers, ({ many }) => ({
+  purchaseOrders: many(purchaseOrders),
+}));
+
+// ---------- Purchase Orders ----------
+
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 64 }).notNull().unique(),
+  supplierId: integer("supplier_id")
+    .references(() => suppliers.id, { onDelete: "cascade" })
+    .notNull(),
+  issueDate: date("issue_date").notNull(),
+  expectedDate: date("expected_date"),
+  status: purchaseOrderStatusEnum("status").default("draft").notNull(),
+  taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
+  discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
+  notes: text("notes"),
+  lastSentAt: timestamp("last_sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: serial("id").primaryKey(),
+  purchaseOrderId: integer("purchase_order_id")
+    .references(() => purchaseOrders.id, { onDelete: "cascade" })
+    .notNull(),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  supplier: one(suppliers, { fields: [purchaseOrders.supplierId], references: [suppliers.id] }),
+  items: many(purchaseOrderItems),
+}));
+
+export const purchaseOrderItemsRelations = relations(purchaseOrderItems, ({ one }) => ({
+  purchaseOrder: one(purchaseOrders, {
+    fields: [purchaseOrderItems.purchaseOrderId],
+    references: [purchaseOrders.id],
+  }),
+}));
+
+// ---------- Job Cards ----------
+
+export const jobCards = pgTable("job_cards", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 64 }).notNull().unique(),
+  clientId: integer("client_id")
+    .references(() => clients.id, { onDelete: "cascade" })
+    .notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  technician: varchar("technician", { length: 256 }),
+  equipment: varchar("equipment", { length: 256 }),
+  status: jobCardStatusEnum("status").default("open").notNull(),
+  openedDate: date("opened_date").notNull(),
+  completedDate: date("completed_date"),
+  taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
+  discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
+  notes: text("notes"),
+  lastSentAt: timestamp("last_sent_at"),
+  convertedInvoiceId: integer("converted_invoice_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const jobCardItems = pgTable("job_card_items", {
+  id: serial("id").primaryKey(),
+  jobCardId: integer("job_card_id")
+    .references(() => jobCards.id, { onDelete: "cascade" })
+    .notNull(),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const jobCardsRelations = relations(jobCards, ({ one, many }) => ({
+  client: one(clients, { fields: [jobCards.clientId], references: [clients.id] }),
+  items: many(jobCardItems),
+}));
+
+export const jobCardItemsRelations = relations(jobCardItems, ({ one }) => ({
+  jobCard: one(jobCards, { fields: [jobCardItems.jobCardId], references: [jobCards.id] }),
+}));
+
+// ---------- Delivery Notes ----------
+
+export const deliveryNotes = pgTable("delivery_notes", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 64 }).notNull().unique(),
+  clientId: integer("client_id")
+    .references(() => clients.id, { onDelete: "cascade" })
+    .notNull(),
+  relatedInvoiceId: integer("related_invoice_id"),
+  deliveryDate: date("delivery_date").notNull(),
+  status: deliveryNoteStatusEnum("status").default("draft").notNull(),
+  deliveredBy: varchar("delivered_by", { length: 256 }),
+  receivedBy: varchar("received_by", { length: 256 }),
+  notes: text("notes"),
+  lastSentAt: timestamp("last_sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const deliveryNoteItems = pgTable("delivery_note_items", {
+  id: serial("id").primaryKey(),
+  deliveryNoteId: integer("delivery_note_id")
+    .references(() => deliveryNotes.id, { onDelete: "cascade" })
+    .notNull(),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const deliveryNotesRelations = relations(deliveryNotes, ({ one, many }) => ({
+  client: one(clients, { fields: [deliveryNotes.clientId], references: [clients.id] }),
+  items: many(deliveryNoteItems),
+}));
+
+export const deliveryNoteItemsRelations = relations(deliveryNoteItems, ({ one }) => ({
+  deliveryNote: one(deliveryNotes, {
+    fields: [deliveryNoteItems.deliveryNoteId],
+    references: [deliveryNotes.id],
+  }),
 }));

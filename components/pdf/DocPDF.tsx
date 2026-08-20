@@ -167,21 +167,34 @@ const STATUS_COLOR: Record<string, string> = {
   accepted: "#1F8A5A",
   declined: "#C0392B",
   expired: "#5B6472",
+  confirmed: "#1F8A5A",
+  received: "#1F8A5A",
+  open: "#0E93A8",
+  in_progress: "#12B8C4",
+  completed: "#1F8A5A",
+  invoiced: "#1F8A5A",
+  delivered: "#1F8A5A",
 };
 
 export type DocPDFProps = {
-  kind: "Invoice" | "Quotation";
+  kind: "Invoice" | "Quotation" | "Purchase Order" | "Job Card" | "Delivery Note";
   number: string;
   status: string;
   issueDate: string;
   dueOrExpiryLabel: string;
   dueOrExpiryDate: string;
+  /** Label for the counterparty block — defaults to "Billed to" */
+  partyLabel?: string;
   client: { name: string; email?: string | null; address?: string | null };
   items: Item[];
   taxRate: string;
   discount: string;
   notes?: string | null;
   paid?: number;
+  /** Set false for documents with no pricing (e.g. delivery notes) — hides price columns and totals */
+  showPricing?: boolean;
+  /** Extra label/value pairs shown under the party block, e.g. technician, equipment */
+  extraMeta?: { label: string; value: string }[];
   company: {
     companyName: string;
     email?: string | null;
@@ -199,12 +212,15 @@ export default function DocPDF({
   issueDate,
   dueOrExpiryLabel,
   dueOrExpiryDate,
+  partyLabel = "Billed to",
   client,
   items,
   taxRate,
   discount,
   notes,
   paid,
+  showPricing = true,
+  extraMeta,
   company,
 }: DocPDFProps) {
   const subtotal = items.reduce((s, it) => s + toNumber(it.quantity) * toNumber(it.unitPrice), 0);
@@ -221,7 +237,7 @@ export default function DocPDF({
           <View>
             <Text style={styles.kicker}>{kind}</Text>
             <Text style={styles.docTitle}>{number}</Text>
-            <Text style={[styles.stamp, { color: STATUS_COLOR[status] ?? "#0E2A47" }]}>{status}</Text>
+            <Text style={[styles.stamp, { color: STATUS_COLOR[status] ?? "#0E2A47" }]}>{status.replace(/_/g, " ")}</Text>
           </View>
           <View style={styles.companyBlock}>
             <View style={styles.companyNameRow}>
@@ -236,16 +252,26 @@ export default function DocPDF({
 
         <View style={styles.metaRow}>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>Billed to</Text>
+            <Text style={styles.metaLabel}>{partyLabel}</Text>
             <Text style={styles.metaValue}>{client.name}</Text>
             {client.email ? <Text style={styles.metaValue}>{client.email}</Text> : null}
             {client.address ? <Text style={styles.metaValue}>{client.address}</Text> : null}
+            {extraMeta?.map((m, i) => (
+              <View key={i} style={{ marginTop: i === 0 ? 8 : 0 }}>
+                <Text style={styles.metaLabel}>{m.label}</Text>
+                <Text style={styles.metaValue}>{m.value}</Text>
+              </View>
+            ))}
           </View>
           <View style={styles.metaBlock}>
             <Text style={styles.metaLabel}>Issued</Text>
             <Text style={styles.metaValue}>{formatDate(issueDate)}</Text>
-            <Text style={[styles.metaLabel, { marginTop: 8 }]}>{dueOrExpiryLabel}</Text>
-            <Text style={styles.metaValue}>{formatDate(dueOrExpiryDate)}</Text>
+            {dueOrExpiryDate ? (
+              <>
+                <Text style={[styles.metaLabel, { marginTop: 8 }]}>{dueOrExpiryLabel}</Text>
+                <Text style={styles.metaValue}>{formatDate(dueOrExpiryDate)}</Text>
+              </>
+            ) : null}
           </View>
         </View>
 
@@ -253,21 +279,26 @@ export default function DocPDF({
           <View style={styles.tableHeadRow}>
             <Text style={[styles.colDesc, styles.thText]}>Description</Text>
             <Text style={[styles.colQty, styles.thText]}>Qty</Text>
-            <Text style={[styles.colUnit, styles.thText]}>Unit price</Text>
-            <Text style={[styles.colTotal, styles.thText]}>Total</Text>
+            {showPricing && <Text style={[styles.colUnit, styles.thText]}>Unit price</Text>}
+            {showPricing && <Text style={[styles.colTotal, styles.thText]}>Total</Text>}
           </View>
           {items.map((it, i) => (
             <View key={i} style={styles.tableRow}>
               <Text style={styles.colDesc}>{it.description}</Text>
               <Text style={[styles.colQty, { fontFamily: "Courier" }]}>{it.quantity}</Text>
-              <Text style={[styles.colUnit, { fontFamily: "Courier" }]}>{formatMoney(it.unitPrice)}</Text>
-              <Text style={[styles.colTotal, { fontFamily: "Courier" }]}>
-                {formatMoney(toNumber(it.quantity) * toNumber(it.unitPrice))}
-              </Text>
+              {showPricing && (
+                <Text style={[styles.colUnit, { fontFamily: "Courier" }]}>{formatMoney(it.unitPrice)}</Text>
+              )}
+              {showPricing && (
+                <Text style={[styles.colTotal, { fontFamily: "Courier" }]}>
+                  {formatMoney(toNumber(it.quantity) * toNumber(it.unitPrice))}
+                </Text>
+              )}
             </View>
           ))}
         </View>
 
+        {showPricing && (
         <View style={styles.totalsBlock}>
           <View style={styles.totalsRow}>
             <Text style={styles.totalsLabel}>Subtotal</Text>
@@ -304,6 +335,7 @@ export default function DocPDF({
             </>
           )}
         </View>
+        )}
 
         {notes ? (
           <View style={styles.notes}>

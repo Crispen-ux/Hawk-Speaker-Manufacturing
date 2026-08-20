@@ -15,6 +15,10 @@ import {
   LogOut,
   Menu,
   X,
+  ShoppingCart,
+  Truck,
+  Wrench,
+  Building2,
 } from "lucide-react";
 
 const links = [
@@ -22,8 +26,12 @@ const links = [
   { href: "/invoices", label: "Invoices", icon: FileText },
   { href: "/quotations", label: "Quotations", icon: FileSignature },
   { href: "/recurring", label: "Recurring", icon: Repeat },
+  { href: "/job-cards", label: "Job cards", icon: Wrench },
+  { href: "/delivery-notes", label: "Delivery notes", icon: Truck },
+  { href: "/purchase-orders", label: "Purchase orders", icon: ShoppingCart },
   { href: "/statements", label: "Statements", icon: Receipt },
   { href: "/clients", label: "Clients", icon: Users },
+  { href: "/suppliers", label: "Suppliers", icon: Building2 },
   { href: "/catalog", label: "Catalogue", icon: Package },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];

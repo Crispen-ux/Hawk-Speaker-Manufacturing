@@ -9,35 +9,26 @@ async function ensureSettingsRow() {
   }
 }
 
-export async function nextInvoiceNumber() {
+type NumberField = "nextInvoiceNumber" | "nextQuotationNumber" | "nextPurchaseOrderNumber" | "nextJobCardNumber" | "nextDeliveryNoteNumber";
+type PrefixField = "invoicePrefix" | "quotationPrefix" | "purchaseOrderPrefix" | "jobCardPrefix" | "deliveryNotePrefix";
+
+async function nextNumber(numberField: NumberField, prefixField: PrefixField) {
   await ensureSettingsRow();
   const rows = await db
     .update(settings)
-    .set({ nextInvoiceNumber: sql`${settings.nextInvoiceNumber} + 1` })
+    .set({ [numberField]: sql`${settings[numberField]} + 1` })
     .where(eq(settings.id, 1))
-    .returning({
-      n: settings.nextInvoiceNumber,
-      prefix: settings.invoicePrefix,
-    });
+    .returning({ n: settings[numberField], prefix: settings[prefixField] });
   const row = rows[0];
   const used = row.n - 1;
   return `${row.prefix}${String(used).padStart(4, "0")}`;
 }
 
-export async function nextQuotationNumber() {
-  await ensureSettingsRow();
-  const rows = await db
-    .update(settings)
-    .set({ nextQuotationNumber: sql`${settings.nextQuotationNumber} + 1` })
-    .where(eq(settings.id, 1))
-    .returning({
-      n: settings.nextQuotationNumber,
-      prefix: settings.quotationPrefix,
-    });
-  const row = rows[0];
-  const used = row.n - 1;
-  return `${row.prefix}${String(used).padStart(4, "0")}`;
-}
+export const nextInvoiceNumber = () => nextNumber("nextInvoiceNumber", "invoicePrefix");
+export const nextQuotationNumber = () => nextNumber("nextQuotationNumber", "quotationPrefix");
+export const nextPurchaseOrderNumber = () => nextNumber("nextPurchaseOrderNumber", "purchaseOrderPrefix");
+export const nextJobCardNumber = () => nextNumber("nextJobCardNumber", "jobCardPrefix");
+export const nextDeliveryNoteNumber = () => nextNumber("nextDeliveryNoteNumber", "deliveryNotePrefix");
 
 export async function getSettings() {
   await ensureSettingsRow();
