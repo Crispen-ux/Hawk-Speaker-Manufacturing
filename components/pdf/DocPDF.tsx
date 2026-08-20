@@ -41,18 +41,22 @@ const styles = StyleSheet.create({
   },
   companyBlock: {
     alignItems: "flex-end",
-    maxWidth: 220,
+    maxWidth: 240,
+  },
+  companyNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
   },
   logo: {
-    maxWidth: 140,
-    maxHeight: 56,
-    marginBottom: 8,
+    maxWidth: 90,
+    maxHeight: 22,
+    marginRight: 7,
     objectFit: "contain",
   },
   companyName: {
     fontFamily: "Helvetica-Bold",
     fontSize: 12,
-    marginBottom: 2,
     color: "#0E2A47",
   },
   small: {
@@ -220,8 +224,10 @@ export default function DocPDF({
             <Text style={[styles.stamp, { color: STATUS_COLOR[status] ?? "#0E2A47" }]}>{status}</Text>
           </View>
           <View style={styles.companyBlock}>
-            {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
-            <Text style={styles.companyName}>{company.companyName}</Text>
+            <View style={styles.companyNameRow}>
+              {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
+              <Text style={styles.companyName}>{company.companyName}</Text>
+            </View>
             {company.address ? <Text style={styles.small}>{company.address}</Text> : null}
             {company.email ? <Text style={styles.small}>{company.email}</Text> : null}
             {company.phone ? <Text style={styles.small}>{company.phone}</Text> : null}

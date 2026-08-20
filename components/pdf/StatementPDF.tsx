@@ -29,14 +29,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   docTitle: { fontSize: 22, fontFamily: "Helvetica-Bold", color: "#0E2A47" },
-  companyBlock: { alignItems: "flex-end", maxWidth: 220 },
+  companyBlock: { alignItems: "flex-end", maxWidth: 240 },
+  companyNameRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   logo: {
-    maxWidth: 140,
-    maxHeight: 56,
-    marginBottom: 8,
+    maxWidth: 90,
+    maxHeight: 22,
+    marginRight: 7,
     objectFit: "contain",
   },
-  companyName: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 2, color: "#0E2A47" },
+  companyName: { fontFamily: "Helvetica-Bold", fontSize: 12, color: "#0E2A47" },
   small: { fontSize: 9, color: "#5B6472", textAlign: "right" },
   metaRow: {
     flexDirection: "row",
@@ -142,8 +143,10 @@ export default function StatementPDF({
             <Text style={styles.docTitle}>{client.name}</Text>
           </View>
           <View style={styles.companyBlock}>
-            {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
-            <Text style={styles.companyName}>{company.companyName}</Text>
+            <View style={styles.companyNameRow}>
+              {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
+              <Text style={styles.companyName}>{company.companyName}</Text>
+            </View>
             {company.address ? <Text style={styles.small}>{company.address}</Text> : null}
             {company.email ? <Text style={styles.small}>{company.email}</Text> : null}
             {company.phone ? <Text style={styles.small}>{company.phone}</Text> : null}
