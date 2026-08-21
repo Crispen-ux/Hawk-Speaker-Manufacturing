@@ -53,7 +53,7 @@ function SidebarContent({
     <div className="flex h-full w-64 flex-col bg-navy text-paper">
       <div className="border-b border-white/10 px-6 py-7">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logoSrc} alt={name} className="h-8 w-auto max-w-[170px] object-contain object-left" />
+        <img src={logoSrc} alt={name} className="h-12 w-auto max-w-[210px] object-contain object-left" />
         <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.22em] text-paper/45">
           Invoicing &amp; billing
         </div>
@@ -142,7 +142,7 @@ export default function Sidebar({
           <Menu size={22} strokeWidth={2} />
         </button>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logoSrc} alt={name} className="h-6 w-auto max-w-[140px] object-contain" />
+        <img src={logoSrc} alt={name} className="h-8 w-auto max-w-[160px] object-contain" />
         <div className="w-8" />
       </div>
 
