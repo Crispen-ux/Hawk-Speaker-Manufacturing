@@ -374,3 +374,12 @@ export const deliveryNoteItemsRelations = relations(deliveryNoteItems, ({ one })
     references: [deliveryNotes.id],
   }),
 }));
+
+// ---------- Modules ----------
+// A row exists only once a module's toggle has been saved in Settings; missing
+// rows default to enabled. Keyed by the ModuleDef keys in lib/modules.ts.
+
+export const modules = pgTable("modules", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  enabled: boolean("enabled").default(true).notNull(),
+});

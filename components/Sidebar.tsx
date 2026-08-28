@@ -22,33 +22,36 @@ import {
 } from "lucide-react";
 
 const links = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/invoices", label: "Invoices", icon: FileText },
-  { href: "/quotations", label: "Quotations", icon: FileSignature },
-  { href: "/recurring", label: "Recurring", icon: Repeat },
-  { href: "/job-cards", label: "Job cards", icon: Wrench },
-  { href: "/delivery-notes", label: "Delivery notes", icon: Truck },
-  { href: "/purchase-orders", label: "Purchase orders", icon: ShoppingCart },
-  { href: "/statements", label: "Statements", icon: Receipt },
-  { href: "/clients", label: "Clients", icon: Users },
-  { href: "/suppliers", label: "Suppliers", icon: Building2 },
-  { href: "/catalog", label: "Catalogue", icon: Package },
-  { href: "/settings", label: "Settings", icon: SettingsIcon },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, module: "dashboard", alwaysOn: true },
+  { href: "/invoices", label: "Invoices", icon: FileText, module: "invoices" },
+  { href: "/quotations", label: "Quotations", icon: FileSignature, module: "quotations" },
+  { href: "/recurring", label: "Recurring", icon: Repeat, module: "recurring" },
+  { href: "/job-cards", label: "Job cards", icon: Wrench, module: "jobCards" },
+  { href: "/delivery-notes", label: "Delivery notes", icon: Truck, module: "deliveryNotes" },
+  { href: "/purchase-orders", label: "Purchase orders", icon: ShoppingCart, module: "purchaseOrders" },
+  { href: "/statements", label: "Statements", icon: Receipt, module: "statements" },
+  { href: "/clients", label: "Clients", icon: Users, module: "customers" },
+  { href: "/suppliers", label: "Suppliers", icon: Building2, module: "suppliers" },
+  { href: "/catalog", label: "Catalogue", icon: Package, module: "catalog" },
+  { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true },
 ];
 
 function SidebarContent({
   logoSrc,
   name,
   pathname,
+  disabledKeys,
   onNavigate,
   onLogout,
 }: {
   logoSrc: string;
   name: string;
   pathname: string;
+  disabledKeys?: string[];
   onNavigate?: () => void;
   onLogout: () => void;
 }) {
+  const visible = links.filter((l) => l.alwaysOn || !(disabledKeys ?? []).includes(l.module));
   return (
     <div className="flex h-full w-64 flex-col bg-navy text-paper">
       <div className="border-b border-white/10 px-6 py-7">
@@ -59,7 +62,7 @@ function SidebarContent({
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto space-y-0.5 px-3 py-4">
-        {links.map((l) => {
+        {visible.map((l) => {
           const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
           const Icon = l.icon;
           return (
@@ -95,9 +98,11 @@ function SidebarContent({
 export default function Sidebar({
   logoData,
   companyName,
+  disabledKeys = [],
 }: {
   logoData?: string | null;
   companyName?: string;
+  disabledKeys?: string[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -129,7 +134,7 @@ export default function Sidebar({
     <>
       {/* Desktop rail: pinned to the viewport height, independent of page scroll length */}
       <aside className="sticky top-0 hidden h-dvh shrink-0 md:block">
-        <SidebarContent logoSrc={logoSrc} name={name} pathname={pathname} onLogout={logout} />
+        <SidebarContent logoSrc={logoSrc} name={name} pathname={pathname} disabledKeys={disabledKeys} onLogout={logout} />
       </aside>
 
       {/* Mobile top bar */}
@@ -170,6 +175,7 @@ export default function Sidebar({
                   logoSrc={logoSrc}
                   name={name}
                   pathname={pathname}
+                  disabledKeys={disabledKeys}
                   onNavigate={() => setOpen(false)}
                   onLogout={logout}
                 />

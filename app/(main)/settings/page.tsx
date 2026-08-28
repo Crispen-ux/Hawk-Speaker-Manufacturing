@@ -1,5 +1,8 @@
 import { getSettings } from "@/lib/numbering";
 import { updateSettings } from "@/lib/actions/settings";
+import { updateModules } from "@/lib/actions/modules";
+import { getEnabledModules } from "@/lib/enabled-modules";
+import { MODULES } from "@/lib/modules";
 import { PageHeader, Field, inputClass, PrimaryButton, Card } from "@/components/ui";
 import LogoUploader from "@/components/LogoUploader";
 
@@ -7,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const settings = await getSettings();
+  const enabled = await getEnabledModules();
 
   return (
     <div>
@@ -62,6 +66,48 @@ export default async function SettingsPage() {
           </div>
           <div className="pt-2">
             <PrimaryButton type="submit">Save settings</PrimaryButton>
+          </div>
+        </form>
+      </Card>
+
+      <Card className="mt-8 max-w-2xl">
+        <h2 className="mb-1 font-display text-lg font-bold text-navy">Modules</h2>
+        <p className="mb-5 text-xs text-ink-soft">
+          Turn areas of the system on or off. Disabled modules disappear from the sidebar and their pages
+          are blocked — nothing else is affected. Dashboard and Settings are always available.
+        </p>
+        <form action={updateModules}>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {MODULES.filter((m) => !m.alwaysOn).map((m) => (
+              <label
+                key={m.key}
+                className={`flex items-start gap-3 rounded-md border border-rule px-3 py-2.5 ${
+                  m.built ? "cursor-pointer hover:border-forest/40 hover:bg-paper-dim/50" : "opacity-60"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  name={m.key}
+                  defaultChecked={enabled[m.key]}
+                  disabled={!m.built}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-navy"
+                />
+                <span className="min-w-0">
+                  <span className="text-sm font-medium text-ink">
+                    {m.label}
+                    {!m.built && (
+                      <span className="ml-2 rounded bg-paper-dim px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-soft">
+                        Upcoming
+                      </span>
+                    )}
+                  </span>
+                  <span className="block text-xs text-ink-soft">{m.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="pt-5">
+            <PrimaryButton type="submit">Save modules</PrimaryButton>
           </div>
         </form>
       </Card>
