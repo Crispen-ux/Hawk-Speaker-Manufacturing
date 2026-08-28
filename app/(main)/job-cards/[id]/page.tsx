@@ -6,6 +6,7 @@ import Link from "next/link";
 import { setJobCardStatus, deleteJobCard, convertJobCardToInvoice } from "@/lib/actions/jobCards";
 import { sendJobCardEmailAction } from "@/lib/actions/send";
 import { calcTotals, formatDate, formatMoney, toNumber } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
@@ -15,6 +16,8 @@ export const dynamic = "force-dynamic";
 export default async function JobCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const jobId = Number(id);
+  const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
 
   const job = await db.query.jobCards.findFirst({
     where: eq(jobCards.id, jobId),
@@ -95,9 +98,9 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
                       <tr key={it.id} className="border-b border-rule last:border-b-0">
                         <td className="py-2.5">{it.description}</td>
                         <td className="py-2.5 text-right font-mono">{it.quantity}</td>
-                        <td className="py-2.5 text-right font-mono">{formatMoney(it.unitPrice)}</td>
+                        <td className="py-2.5 text-right font-mono">{money(it.unitPrice)}</td>
                         <td className="py-2.5 text-right font-mono">
-                          {formatMoney(toNumber(it.quantity) * toNumber(it.unitPrice))}
+                          {money(toNumber(it.quantity) * toNumber(it.unitPrice))}
                         </td>
                       </tr>
                     ))}
@@ -108,7 +111,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
                   <div className="w-64 space-y-1.5 text-sm">
                     <div className="flex justify-between border-t border-rule pt-1.5 text-base font-semibold">
                       <span>Total</span>
-                      <span className="font-mono">{formatMoney(totals.total)}</span>
+                      <span className="font-mono">{money(totals.total)}</span>
                     </div>
                   </div>
                 </div>

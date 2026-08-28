@@ -5,6 +5,7 @@ import { suppliers, purchaseOrders, catalogItems } from "@/db/schema";
 import { updatePurchaseOrder } from "@/lib/actions/purchaseOrders";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 import LineItemsEditor from "@/components/LineItemsEditor";
+import { getSettings } from "@/lib/numbering";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function EditPurchaseOrderPage({ params }: { params: Promis
 
   const allSuppliers = await db.select().from(suppliers).orderBy(suppliers.name);
   const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
+  const settings = await getSettings();
   const updateWithId = updatePurchaseOrder.bind(null, poId);
 
   return (
@@ -54,6 +56,7 @@ export default async function EditPurchaseOrderPage({ params }: { params: Promis
             initialTaxRate={po.taxRate}
             initialDiscount={po.discount}
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (shown on PDF)">

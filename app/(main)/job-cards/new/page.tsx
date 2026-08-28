@@ -75,6 +75,7 @@ export default async function NewJobCardPage() {
             initialTaxRate={settings.defaultTaxRate}
             initialDiscount="0"
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (carried onto the invoice if converted)">

@@ -2,10 +2,16 @@ import { db } from "@/db";
 import { invoices, quotations, clients, purchaseOrders, jobCards, deliveryNotes } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
+import { companyFromSettings } from "@/lib/company";
 import { renderDocPDFBuffer, renderStatementPDFBuffer } from "@/lib/pdf-render";
 import { sendEmail } from "@/lib/email";
 import { calcTotals, formatMoney, formatDate, toNumber } from "@/lib/money";
-import { buildDocumentEmail, type EmailCompany } from "@/lib/email-templates";
+import {
+  buildDocumentEmail,
+  getEmailTemplates,
+  renderTemplate,
+  type EmailCompany,
+} from "@/lib/email-templates";
 import { getBaseUrl } from "@/lib/base-url";
 
 function companyForEmail(settings: {
@@ -15,6 +21,8 @@ function companyForEmail(settings: {
   phone: string | null;
   bankDetails: string | null;
   logoData: string | null;
+  registrationNumber: string | null;
+  vatNumber: string | null;
 }): EmailCompany {
   const baseUrl = getBaseUrl();
   return {
@@ -23,6 +31,8 @@ function companyForEmail(settings: {
     email: settings.email,
     phone: settings.phone,
     bankDetails: settings.bankDetails,
+    registrationNumber: settings.registrationNumber,
+    vatNumber: settings.vatNumber,
     logoUrl: settings.logoData && baseUrl ? `${baseUrl}/api/settings/logo` : null,
   };
 }
@@ -38,6 +48,8 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
   const paid = invoice.payments.reduce((s, p) => s + toNumber(p.amount), 0);
   const { total } = calcTotals(invoice.items, invoice.taxRate, invoice.discount);
   const balance = Math.max(total - paid, 0);
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
+  const templates = getEmailTemplates(settings);
 
   const buffer = await renderDocPDFBuffer({
     kind: "Invoice",
@@ -56,20 +68,21 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
     discount: invoice.discount,
     notes: invoice.notes,
     paid,
-    company: {
-      companyName: settings.companyName,
-      email: settings.email,
-      phone: settings.phone,
-      address: settings.address,
-      bankDetails: settings.bankDetails,
-      logoData: settings.logoData,
-    },
+    company: companyFromSettings(settings),
   });
+
+  const emailVars = {
+    companyName: settings.companyName,
+    number: invoice.number,
+    total: money(total),
+    dueDate: formatDate(invoice.dueDate),
+    clientName: invoice.client?.name ?? "",
+  };
 
   const html = buildDocumentEmail({
     kicker: "Invoice",
     heading: `Invoice ${invoice.number}`,
-    greeting: `Please find attached invoice ${invoice.number} for ${formatMoney(total)}, due ${formatDate(invoice.dueDate)}.`,
+    greeting: renderTemplate(templates.invoice.greeting, emailVars),
     message,
     recipientName: invoice.client?.name,
     detailRows: [
@@ -77,14 +90,14 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
       { label: "Issue date", value: formatDate(invoice.issueDate) },
       { label: "Due date", value: formatDate(invoice.dueDate) },
     ],
-    highlight: { label: paid > 0 ? "Balance due" : "Amount due", value: formatMoney(balance) },
+    highlight: { label: paid > 0 ? "Balance due" : "Amount due", value: money(balance) },
     attachmentLabel: `${invoice.number}.pdf`,
     company: companyForEmail(settings),
   });
 
   await sendEmail({
     to,
-    subject: `Invoice ${invoice.number} from ${settings.companyName}`,
+    subject: renderTemplate(templates.invoice.subject, emailVars),
     html,
     attachments: [{ filename: `${invoice.number}.pdf`, content: buffer.toString("base64") }],
   });
@@ -104,6 +117,8 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
 
   const settings = await getSettings();
   const { total } = calcTotals(quotation.items, quotation.taxRate, quotation.discount);
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
+  const templates = getEmailTemplates(settings);
 
   const buffer = await renderDocPDFBuffer({
     kind: "Quotation",
@@ -121,20 +136,21 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
     taxRate: quotation.taxRate,
     discount: quotation.discount,
     notes: quotation.notes,
-    company: {
-      companyName: settings.companyName,
-      email: settings.email,
-      phone: settings.phone,
-      address: settings.address,
-      bankDetails: settings.bankDetails,
-      logoData: settings.logoData,
-    },
+    company: companyFromSettings(settings),
   });
+
+  const emailVars = {
+    companyName: settings.companyName,
+    number: quotation.number,
+    total: money(total),
+    validUntil: formatDate(quotation.expiryDate),
+    clientName: quotation.client?.name ?? "",
+  };
 
   const html = buildDocumentEmail({
     kicker: "Quotation",
     heading: `Quotation ${quotation.number}`,
-    greeting: `Please find attached quotation ${quotation.number} for ${formatMoney(total)}, valid until ${formatDate(quotation.expiryDate)}.`,
+    greeting: renderTemplate(templates.quotation.greeting, emailVars),
     message,
     recipientName: quotation.client?.name,
     detailRows: [
@@ -142,14 +158,14 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
       { label: "Issue date", value: formatDate(quotation.issueDate) },
       { label: "Valid until", value: formatDate(quotation.expiryDate) },
     ],
-    highlight: { label: "Total", value: formatMoney(total) },
+    highlight: { label: "Total", value: money(total) },
     attachmentLabel: `${quotation.number}.pdf`,
     company: companyForEmail(settings),
   });
 
   await sendEmail({
     to,
-    subject: `Quotation ${quotation.number} from ${settings.companyName}`,
+    subject: renderTemplate(templates.quotation.subject, emailVars),
     html,
     attachments: [{ filename: `${quotation.number}.pdf`, content: buffer.toString("base64") }],
   });
@@ -171,6 +187,8 @@ export async function sendStatementByEmail(
   if (!client) throw new Error("Client not found");
 
   const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
+  const templates = getEmailTemplates(settings);
 
   const rows = await db.query.invoices.findMany({
     where: and(eq(invoices.clientId, clientId), gte(invoices.issueDate, fromDate), lte(invoices.issueDate, toDate)),
@@ -192,33 +210,36 @@ export async function sendStatementByEmail(
     fromDate,
     toDate,
     rows: statementRows,
-    company: {
-      companyName: settings.companyName,
-      email: settings.email,
-      phone: settings.phone,
-      address: settings.address,
-      logoData: settings.logoData,
-    },
+    company: companyFromSettings(settings),
   });
+
+  const period = `${formatDate(fromDate)} — ${formatDate(toDate)}`;
+  const emailVars = {
+    companyName: settings.companyName,
+    clientName: client.name,
+    period,
+    invoiceCount: statementRows.length,
+    outstanding: money(outstanding),
+  };
 
   const html = buildDocumentEmail({
     kicker: "Statement of account",
     heading: `Statement for ${client.name}`,
-    greeting: `Please find attached your statement of account for ${formatDate(fromDate)} to ${formatDate(toDate)}.`,
+    greeting: renderTemplate(templates.statement.greeting, emailVars),
     message,
     recipientName: client.name,
     detailRows: [
-      { label: "Period", value: `${formatDate(fromDate)} — ${formatDate(toDate)}` },
+      { label: "Period", value: period },
       { label: "Invoices included", value: String(statementRows.length) },
     ],
-    highlight: { label: "Outstanding balance", value: formatMoney(outstanding) },
+    highlight: { label: "Outstanding balance", value: money(outstanding) },
     attachmentLabel: `statement-${clientName}.pdf`,
     company: companyForEmail(settings),
   });
 
   await sendEmail({
     to,
-    subject: `Statement of account from ${settings.companyName}`,
+    subject: renderTemplate(templates.statement.subject, emailVars),
     html,
     attachments: [{ filename: `statement-${clientName}.pdf`, content: buffer.toString("base64") }],
   });
@@ -233,6 +254,8 @@ export async function sendPurchaseOrderByEmail(poId: number, to: string, message
 
   const settings = await getSettings();
   const { total } = calcTotals(po.items, po.taxRate, po.discount);
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
+  const templates = getEmailTemplates(settings);
 
   const buffer = await renderDocPDFBuffer({
     kind: "Purchase Order",
@@ -251,20 +274,21 @@ export async function sendPurchaseOrderByEmail(poId: number, to: string, message
     taxRate: po.taxRate,
     discount: po.discount,
     notes: po.notes,
-    company: {
-      companyName: settings.companyName,
-      email: settings.email,
-      phone: settings.phone,
-      address: settings.address,
-      bankDetails: settings.bankDetails,
-      logoData: settings.logoData,
-    },
+    company: companyFromSettings(settings),
   });
+
+  const emailVars = {
+    companyName: settings.companyName,
+    number: po.number,
+    total: money(total),
+    expected: po.expectedDate ? formatDate(po.expectedDate) : "",
+    supplierName: po.supplier?.name ?? "",
+  };
 
   const html = buildDocumentEmail({
     kicker: "Purchase order",
     heading: `Purchase order ${po.number}`,
-    greeting: `Please find attached purchase order ${po.number} for ${formatMoney(total)}.`,
+    greeting: renderTemplate(templates.purchaseOrder.greeting, emailVars),
     message,
     recipientName: po.supplier?.name,
     detailRows: [
@@ -272,14 +296,14 @@ export async function sendPurchaseOrderByEmail(poId: number, to: string, message
       { label: "Issue date", value: formatDate(po.issueDate) },
       ...(po.expectedDate ? [{ label: "Expected delivery", value: formatDate(po.expectedDate) }] : []),
     ],
-    highlight: { label: "Order total", value: formatMoney(total) },
+    highlight: { label: "Order total", value: money(total) },
     attachmentLabel: `${po.number}.pdf`,
     company: companyForEmail(settings),
   });
 
   await sendEmail({
     to,
-    subject: `Purchase order ${po.number} from ${settings.companyName}`,
+    subject: renderTemplate(templates.purchaseOrder.subject, emailVars),
     html,
     attachments: [{ filename: `${po.number}.pdf`, content: buffer.toString("base64") }],
   });
@@ -300,6 +324,8 @@ export async function sendJobCardByEmail(jobId: number, to: string, message?: st
   const settings = await getSettings();
   const hasItems = job.items.length > 0;
   const { total } = calcTotals(job.items, job.taxRate, job.discount);
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
+  const templates = getEmailTemplates(settings);
 
   const extraMeta = [
     job.technician ? { label: "Technician", value: job.technician } : null,
@@ -325,20 +351,23 @@ export async function sendJobCardByEmail(jobId: number, to: string, message?: st
     discount: job.discount,
     notes: [job.title, job.description, job.notes].filter(Boolean).join("\n\n"),
     showPricing: hasItems,
-    company: {
-      companyName: settings.companyName,
-      email: settings.email,
-      phone: settings.phone,
-      address: settings.address,
-      bankDetails: settings.bankDetails,
-      logoData: settings.logoData,
-    },
+    company: companyFromSettings(settings),
   });
+
+  const emailVars = {
+    companyName: settings.companyName,
+    number: job.number,
+    title: job.title,
+    clientName: job.client?.name ?? "",
+    technician: job.technician ?? "",
+    status: job.status.replace(/_/g, " "),
+    total: hasItems ? money(total) : "",
+  };
 
   const html = buildDocumentEmail({
     kicker: "Job card",
     heading: `Job card ${job.number}`,
-    greeting: `Please find attached job card ${job.number} — ${job.title}.`,
+    greeting: renderTemplate(templates.jobCard.greeting, emailVars),
     message,
     recipientName: job.client?.name,
     detailRows: [
@@ -346,14 +375,14 @@ export async function sendJobCardByEmail(jobId: number, to: string, message?: st
       { label: "Opened", value: formatDate(job.openedDate) },
       ...(job.technician ? [{ label: "Technician", value: job.technician }] : []),
     ],
-    highlight: hasItems ? { label: "Total", value: formatMoney(total) } : { label: "Status", value: job.status.replace(/_/g, " ") },
+    highlight: hasItems ? { label: "Total", value: money(total) } : { label: "Status", value: job.status.replace(/_/g, " ") },
     attachmentLabel: `${job.number}.pdf`,
     company: companyForEmail(settings),
   });
 
   await sendEmail({
     to,
-    subject: `Job card ${job.number} from ${settings.companyName}`,
+    subject: renderTemplate(templates.jobCard.subject, emailVars),
     html,
     attachments: [{ filename: `${job.number}.pdf`, content: buffer.toString("base64") }],
   });
@@ -369,6 +398,8 @@ export async function sendDeliveryNoteByEmail(dnId: number, to: string, message?
   if (!dn) throw new Error("Delivery note not found");
 
   const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
+  const templates = getEmailTemplates(settings);
 
   const extraMeta = [
     dn.deliveredBy ? { label: "Delivered by", value: dn.deliveredBy } : null,
@@ -394,20 +425,21 @@ export async function sendDeliveryNoteByEmail(dnId: number, to: string, message?
     discount: "0",
     notes: dn.notes,
     showPricing: false,
-    company: {
-      companyName: settings.companyName,
-      email: settings.email,
-      phone: settings.phone,
-      address: settings.address,
-      bankDetails: settings.bankDetails,
-      logoData: settings.logoData,
-    },
+    company: companyFromSettings(settings),
   });
+
+  const emailVars = {
+    companyName: settings.companyName,
+    number: dn.number,
+    clientName: dn.client?.name ?? "",
+    deliveryDate: formatDate(dn.deliveryDate),
+    itemCount: dn.items.length,
+  };
 
   const html = buildDocumentEmail({
     kicker: "Delivery note",
     heading: `Delivery note ${dn.number}`,
-    greeting: `Please find attached delivery note ${dn.number} confirming ${dn.items.length} item(s) delivered on ${formatDate(dn.deliveryDate)}.`,
+    greeting: renderTemplate(templates.deliveryNote.greeting, emailVars),
     message,
     recipientName: dn.client?.name,
     detailRows: [
@@ -422,7 +454,7 @@ export async function sendDeliveryNoteByEmail(dnId: number, to: string, message?
 
   await sendEmail({
     to,
-    subject: `Delivery note ${dn.number} from ${settings.companyName}`,
+    subject: renderTemplate(templates.deliveryNote.subject, emailVars),
     html,
     attachments: [{ filename: `${dn.number}.pdf`, content: buffer.toString("base64") }],
   });

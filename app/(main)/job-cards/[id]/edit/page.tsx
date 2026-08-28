@@ -5,6 +5,7 @@ import { clients, jobCards, catalogItems } from "@/db/schema";
 import { updateJobCard } from "@/lib/actions/jobCards";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 import LineItemsEditor from "@/components/LineItemsEditor";
+import { getSettings } from "@/lib/numbering";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function EditJobCardPage({ params }: { params: Promise<{ id
 
   const allClients = await db.select().from(clients).orderBy(clients.name);
   const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
+  const settings = await getSettings();
   const updateWithId = updateJobCard.bind(null, jobId);
 
   return (
@@ -72,6 +74,7 @@ export default async function EditJobCardPage({ params }: { params: Promise<{ id
             initialTaxRate={job.taxRate}
             initialDiscount={job.discount}
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (carried onto the invoice if converted)">

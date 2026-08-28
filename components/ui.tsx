@@ -77,12 +77,14 @@ export function EmptyState({ title, hint, action }: { title: string; hint?: stri
 export function Field({
   label,
   children,
+  extraClass = "",
 }: {
   label: string;
   children: React.ReactNode;
+  extraClass?: string;
 }) {
   return (
-    <label className="block">
+    <label className={`block ${extraClass}`}>
       <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">
         {label}
       </span>

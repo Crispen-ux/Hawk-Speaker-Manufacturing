@@ -5,6 +5,7 @@ import { clients, invoices, catalogItems } from "@/db/schema";
 import { updateInvoice } from "@/lib/actions/invoices";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 import LineItemsEditor from "@/components/LineItemsEditor";
+import { getSettings } from "@/lib/numbering";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
 
   const allClients = await db.select().from(clients).orderBy(clients.name);
   const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
+  const settings = await getSettings();
   const updateWithId = updateInvoice.bind(null, invoiceId);
 
   return (
@@ -54,6 +56,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             initialTaxRate={invoice.taxRate}
             initialDiscount={invoice.discount}
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (shown on PDF)">

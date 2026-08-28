@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { renderToBuffer } from "@react-pdf/renderer";
 import DocPDF from "@/components/pdf/DocPDF";
 import { getSettings } from "@/lib/numbering";
+import { companyFromSettings } from "@/lib/company";
 import { toNumber } from "@/lib/money";
 import { NextRequest } from "next/server";
 
@@ -42,14 +43,7 @@ export async function GET(
       discount={invoice.discount}
       notes={invoice.notes}
       paid={paid}
-      company={{
-        companyName: settings.companyName,
-        email: settings.email,
-        phone: settings.phone,
-        address: settings.address,
-        bankDetails: settings.bankDetails,
-        logoData: settings.logoData,
-      }}
+      company={companyFromSettings(settings)}
     />
   );
 

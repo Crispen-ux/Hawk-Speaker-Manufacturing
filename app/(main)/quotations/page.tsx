@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader, LinkButton, EmptyState } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import { formatDate, formatMoney } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
 import { computeQuotation } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ export default async function QuotationsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
+  const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
   const rows = await db.query.quotations.findMany({
     with: { client: true, items: true },
     orderBy: (quotations, { desc }) => [desc(quotations.createdAt)],
@@ -76,7 +79,7 @@ export default async function QuotationsPage({
                   <td className="px-4 py-3">{q.client?.name}</td>
                   <td className="px-4 py-3 text-ink-soft">{formatDate(q.issueDate)}</td>
                   <td className="px-4 py-3 text-ink-soft">{formatDate(q.expiryDate)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{formatMoney(q.totals.total)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{money(q.totals.total)}</td>
                   <td className="px-4 py-3 text-right">
                     <StatusStamp status={q.status} />
                   </td>

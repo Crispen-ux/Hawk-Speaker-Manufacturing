@@ -198,6 +198,11 @@ export type DocPDFProps = {
     address?: string | null;
     bankDetails?: string | null;
     logoData?: string | null;
+    registrationNumber?: string | null;
+    vatNumber?: string | null;
+    currency?: string;
+    paymentTerms?: string | null;
+    invoiceFooter?: string | null;
   };
 };
 
@@ -224,6 +229,9 @@ export default function DocPDF({
   // Cards / Delivery Notes aren't bills yet — so bank details are withheld
   // there even if the company has them configured, to avoid confusion.
   const showBankDetails = kind === "Invoice" || kind === "Quotation";
+  const showBillingText = kind === "Invoice";
+
+  const money = (v: string | number | null | undefined) => formatMoney(v, company.currency || "R");
 
   const subtotal = items.reduce((s, it) => s + toNumber(it.quantity) * toNumber(it.unitPrice), 0);
   const afterDiscount = Math.max(subtotal - toNumber(discount), 0);
@@ -244,6 +252,10 @@ export default function DocPDF({
           <View style={styles.companyBlock}>
             {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
             <Text style={styles.companyName}>{company.companyName}</Text>
+            {company.registrationNumber ? (
+              <Text style={styles.small}>Reg: {company.registrationNumber}</Text>
+            ) : null}
+            {company.vatNumber ? <Text style={styles.small}>VAT: {company.vatNumber}</Text> : null}
             {company.address ? <Text style={styles.small}>{company.address}</Text> : null}
             {company.email ? <Text style={styles.small}>{company.email}</Text> : null}
             {company.phone ? <Text style={styles.small}>{company.phone}</Text> : null}
@@ -288,11 +300,11 @@ export default function DocPDF({
               <Text style={styles.colDesc}>{it.description}</Text>
               <Text style={[styles.colQty, { fontFamily: "Courier" }]}>{it.quantity}</Text>
               {showPricing && (
-                <Text style={[styles.colUnit, { fontFamily: "Courier" }]}>{formatMoney(it.unitPrice)}</Text>
+                <Text style={[styles.colUnit, { fontFamily: "Courier" }]}>{money(it.unitPrice)}</Text>
               )}
               {showPricing && (
                 <Text style={[styles.colTotal, { fontFamily: "Courier" }]}>
-                  {formatMoney(toNumber(it.quantity) * toNumber(it.unitPrice))}
+                  {money(toNumber(it.quantity) * toNumber(it.unitPrice))}
                 </Text>
               )}
             </View>
@@ -304,34 +316,34 @@ export default function DocPDF({
         <View style={styles.totalsBlock}>
           <View style={styles.totalsRow}>
             <Text style={styles.totalsLabel}>Subtotal</Text>
-            <Text style={styles.totalsValueMono}>{formatMoney(subtotal)}</Text>
+            <Text style={styles.totalsValueMono}>{money(subtotal)}</Text>
           </View>
           {toNumber(discount) > 0 && (
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Discount</Text>
-              <Text style={styles.totalsValueMono}>-{formatMoney(discount)}</Text>
+              <Text style={styles.totalsValueMono}>-{money(discount)}</Text>
             </View>
           )}
           <View style={styles.totalsRow}>
             <Text style={styles.totalsLabel}>Tax ({toNumber(taxRate)}%)</Text>
-            <Text style={styles.totalsValueMono}>{formatMoney(tax)}</Text>
+            <Text style={styles.totalsValueMono}>{money(tax)}</Text>
           </View>
           <View style={styles.grandRow}>
             <Text style={styles.grandLabel}>Total</Text>
-            <Text style={styles.grandValue}>{formatMoney(total)}</Text>
+            <Text style={styles.grandValue}>{money(total)}</Text>
           </View>
           {paid !== undefined && paid > 0 && (
             <>
               <View style={[styles.totalsRow, { marginTop: 6 }]}>
                 <Text style={styles.totalsLabel}>Paid</Text>
-                <Text style={styles.totalsValueMono}>{formatMoney(paid)}</Text>
+                <Text style={styles.totalsValueMono}>{money(paid)}</Text>
               </View>
               <View style={styles.totalsRow}>
                 <Text style={[styles.totalsLabel, { fontFamily: "Helvetica-Bold", color: "#16212E" }]}>
                   Balance due
                 </Text>
                 <Text style={[styles.totalsValueMono, { fontFamily: "Courier-Bold" }]}>
-                  {formatMoney(balance)}
+                  {money(balance)}
                 </Text>
               </View>
             </>
@@ -349,6 +361,19 @@ export default function DocPDF({
           <View style={styles.notes}>
             <Text style={styles.metaLabel}>Payment details</Text>
             <Text>{company.bankDetails}</Text>
+          </View>
+        ) : null}
+
+        {company.paymentTerms && showBillingText ? (
+          <View style={styles.notes}>
+            <Text style={styles.metaLabel}>Payment terms</Text>
+            <Text>{company.paymentTerms}</Text>
+          </View>
+        ) : null}
+
+        {company.invoiceFooter && showBillingText ? (
+          <View style={styles.notes}>
+            <Text>{company.invoiceFooter}</Text>
           </View>
         ) : null}
 

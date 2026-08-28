@@ -126,8 +126,12 @@ export default function StatementPDF({
     phone?: string | null;
     address?: string | null;
     logoData?: string | null;
+    registrationNumber?: string | null;
+    vatNumber?: string | null;
+    currency?: string;
   };
 }) {
+  const money = (v: string | number | null | undefined) => formatMoney(v, company.currency || "R");
   const totalCharged = rows.reduce((s, r) => s + r.total, 0);
   const totalPaid = rows.reduce((s, r) => s + r.paid, 0);
   const outstanding = Math.max(totalCharged - totalPaid, 0);
@@ -144,6 +148,10 @@ export default function StatementPDF({
           <View style={styles.companyBlock}>
             {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
             <Text style={styles.companyName}>{company.companyName}</Text>
+            {company.registrationNumber ? (
+              <Text style={styles.small}>Reg: {company.registrationNumber}</Text>
+            ) : null}
+            {company.vatNumber ? <Text style={styles.small}>VAT: {company.vatNumber}</Text> : null}
             {company.address ? <Text style={styles.small}>{company.address}</Text> : null}
             {company.email ? <Text style={styles.small}>{company.email}</Text> : null}
             {company.phone ? <Text style={styles.small}>{company.phone}</Text> : null}
@@ -183,9 +191,9 @@ export default function StatementPDF({
                 <Text style={[styles.colDate, styles.mono]}>{formatDate(r.date)}</Text>
                 <Text style={styles.colDesc}>{r.number}</Text>
                 <Text style={styles.colStatus}>{r.status}</Text>
-                <Text style={[styles.colCharge, styles.mono]}>{formatMoney(r.total)}</Text>
-                <Text style={[styles.colPaid, styles.mono]}>{formatMoney(r.paid)}</Text>
-                <Text style={[styles.colBalance, styles.mono]}>{formatMoney(Math.max(r.total - r.paid, 0))}</Text>
+                <Text style={[styles.colCharge, styles.mono]}>{money(r.total)}</Text>
+                <Text style={[styles.colPaid, styles.mono]}>{money(r.paid)}</Text>
+                <Text style={[styles.colBalance, styles.mono]}>{money(Math.max(r.total - r.paid, 0))}</Text>
               </View>
             ))
           )}
@@ -194,15 +202,15 @@ export default function StatementPDF({
         <View style={styles.totalsBlock}>
           <View style={styles.totalsRow}>
             <Text style={styles.totalsLabel}>Total charged</Text>
-            <Text style={styles.mono}>{formatMoney(totalCharged)}</Text>
+            <Text style={styles.mono}>{money(totalCharged)}</Text>
           </View>
           <View style={styles.totalsRow}>
             <Text style={styles.totalsLabel}>Total paid</Text>
-            <Text style={styles.mono}>{formatMoney(totalPaid)}</Text>
+            <Text style={styles.mono}>{money(totalPaid)}</Text>
           </View>
           <View style={styles.grandRow}>
             <Text style={styles.grandLabel}>Outstanding</Text>
-            <Text style={styles.grandValue}>{formatMoney(outstanding)}</Text>
+            <Text style={styles.grandValue}>{money(outstanding)}</Text>
           </View>
         </View>
 

@@ -135,13 +135,20 @@ export const quotationItems = pgTable("quotation_items", {
 export const settings = pgTable("settings", {
   id: integer("id").primaryKey().default(1),
   companyName: varchar("company_name", { length: 256 }).default("Your Company").notNull(),
+  registrationNumber: text("registration_number"),
+  vatNumber: text("vat_number"),
   email: varchar("email", { length: 256 }),
   phone: varchar("phone", { length: 64 }),
   address: text("address"),
   bankDetails: text("bank_details"),
   logoData: text("logo_data"),
   logoDarkData: text("logo_dark_data"),
+  currency: varchar("currency", { length: 16 }).default("R").notNull(),
   defaultTaxRate: numeric("default_tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
+  taxIncluded: boolean("tax_included").default(false).notNull(),
+  paymentTerms: text("payment_terms"),
+  paymentTermsDays: integer("payment_terms_days").default(14).notNull(),
+  invoiceFooter: text("invoice_footer"),
   invoicePrefix: varchar("invoice_prefix", { length: 16 }).default("INV-").notNull(),
   quotationPrefix: varchar("quotation_prefix", { length: 16 }).default("QUO-").notNull(),
   purchaseOrderPrefix: varchar("purchase_order_prefix", { length: 16 }).default("PO-").notNull(),
@@ -152,6 +159,8 @@ export const settings = pgTable("settings", {
   nextPurchaseOrderNumber: integer("next_purchase_order_number").default(1).notNull(),
   nextJobCardNumber: integer("next_job_card_number").default(1).notNull(),
   nextDeliveryNoteNumber: integer("next_delivery_note_number").default(1).notNull(),
+  emailTemplates: text("email_templates"),
+  whatsappTemplates: text("whatsapp_templates"),
 });
 
 export const catalogItems = pgTable("catalog_items", {

@@ -5,6 +5,7 @@ import { purchaseOrders } from "@/db/schema";
 import { setPurchaseOrderStatus, deletePurchaseOrder } from "@/lib/actions/purchaseOrders";
 import { sendPurchaseOrderEmailAction } from "@/lib/actions/send";
 import { calcTotals, formatDate, formatMoney, toNumber } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
@@ -14,6 +15,8 @@ export const dynamic = "force-dynamic";
 export default async function PurchaseOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const poId = Number(id);
+  const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
 
   const po = await db.query.purchaseOrders.findFirst({
     where: eq(purchaseOrders.id, poId),
@@ -76,9 +79,9 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
                   <tr key={it.id} className="border-b border-rule last:border-b-0">
                     <td className="py-2.5">{it.description}</td>
                     <td className="py-2.5 text-right font-mono">{it.quantity}</td>
-                    <td className="py-2.5 text-right font-mono">{formatMoney(it.unitPrice)}</td>
+                    <td className="py-2.5 text-right font-mono">{money(it.unitPrice)}</td>
                     <td className="py-2.5 text-right font-mono">
-                      {formatMoney(toNumber(it.quantity) * toNumber(it.unitPrice))}
+                      {money(toNumber(it.quantity) * toNumber(it.unitPrice))}
                     </td>
                   </tr>
                 ))}
@@ -89,15 +92,15 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
               <div className="w-64 space-y-1.5 text-sm">
                 <div className="flex justify-between">
                   <span className="text-ink-soft">Subtotal</span>
-                  <span className="font-mono">{formatMoney(totals.subtotal)}</span>
+                  <span className="font-mono">{money(totals.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-soft">Tax</span>
-                  <span className="font-mono">{formatMoney(totals.tax)}</span>
+                  <span className="font-mono">{money(totals.tax)}</span>
                 </div>
                 <div className="flex justify-between border-t border-rule pt-1.5 text-base font-semibold">
                   <span>Total</span>
-                  <span className="font-mono">{formatMoney(totals.total)}</span>
+                  <span className="font-mono">{money(totals.total)}</span>
                 </div>
               </div>
             </div>

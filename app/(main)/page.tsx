@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader, Card, LinkButton, EmptyState } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import { formatDate, formatMoney, toNumber } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
 import { computeInvoice } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 }
 
 export default async function DashboardPage() {
+  const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
   const allInvoices = await db.query.invoices.findMany({
     with: { client: true, items: true, payments: true },
     orderBy: (invoices, { desc }) => [desc(invoices.createdAt)],
@@ -60,9 +63,9 @@ export default async function DashboardPage() {
       <PageHeader eyebrow="Overview" title="Dashboard" />
 
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Outstanding" value={formatMoney(outstanding)} />
-        <Stat label="Overdue" value={formatMoney(overdueTotal)} accent={overdueTotal > 0 ? "text-rust" : undefined} />
-        <Stat label="Paid this month" value={formatMoney(paidThisMonth)} accent="text-success" />
+        <Stat label="Outstanding" value={money(outstanding)} />
+        <Stat label="Overdue" value={money(overdueTotal)} accent={overdueTotal > 0 ? "text-rust" : undefined} />
+        <Stat label="Paid this month" value={money(paidThisMonth)} accent="text-success" />
         <Stat label="Drafts" value={String(draftCount)} />
       </div>
 
@@ -82,7 +85,7 @@ export default async function DashboardPage() {
                     <td className="px-4 py-2.5">{inv.client?.name}</td>
                     <td className="px-4 py-2.5 text-ink-soft">due {formatDate(inv.dueDate)}</td>
                     <td className="px-4 py-2.5 text-right font-mono text-rust">
-                      {formatMoney(inv.computed.balance)}
+                      {money(inv.computed.balance)}
                     </td>
                   </tr>
                 ))}
@@ -111,7 +114,7 @@ export default async function DashboardPage() {
                   </td>
                   <td className="px-4 py-2.5">{inv.client?.name}</td>
                   <td className="px-4 py-2.5 text-ink-soft">{formatDate(inv.issueDate)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono">{formatMoney(inv.computed.total)}</td>
+                  <td className="px-4 py-2.5 text-right font-mono">{money(inv.computed.total)}</td>
                   <td className="px-4 py-2.5 text-right">
                     <StatusStamp status={inv.computed.effectiveStatus} />
                   </td>

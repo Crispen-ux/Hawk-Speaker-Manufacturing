@@ -5,6 +5,7 @@ import { clients, quotations, catalogItems } from "@/db/schema";
 import { updateQuotation } from "@/lib/actions/quotations";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 import LineItemsEditor from "@/components/LineItemsEditor";
+import { getSettings } from "@/lib/numbering";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
 
   const allClients = await db.select().from(clients).orderBy(clients.name);
   const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
+  const settings = await getSettings();
   const updateWithId = updateQuotation.bind(null, quotationId);
 
   return (
@@ -54,6 +56,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
             initialTaxRate={quotation.taxRate}
             initialDiscount={quotation.discount}
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (shown on PDF)">

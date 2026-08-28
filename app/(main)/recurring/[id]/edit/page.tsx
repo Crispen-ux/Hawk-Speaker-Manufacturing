@@ -5,6 +5,7 @@ import { clients, recurringInvoices, catalogItems } from "@/db/schema";
 import { updateRecurring } from "@/lib/actions/recurring";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 import LineItemsEditor from "@/components/LineItemsEditor";
+import { getSettings } from "@/lib/numbering";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function EditRecurringPage({ params }: { params: Promise<{ 
 
   const allClients = await db.select().from(clients).orderBy(clients.name);
   const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
+  const settings = await getSettings();
   const updateWithId = updateRecurring.bind(null, recurringId);
 
   return (
@@ -69,6 +71,7 @@ export default async function EditRecurringPage({ params }: { params: Promise<{ 
             initialTaxRate={rec.taxRate}
             initialDiscount={rec.discount}
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (shown on each generated invoice)">

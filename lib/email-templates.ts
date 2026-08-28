@@ -8,6 +8,83 @@ function escapeHtml(s: string) {
 
 export type DetailRow = { label: string; value: string };
 
+export const EMAIL_TEMPLATE_KEYS = {
+  invoice: ["companyName", "number", "total", "dueDate", "clientName"],
+  quotation: ["companyName", "number", "total", "validUntil", "clientName"],
+  statement: ["companyName", "clientName", "period", "invoiceCount", "outstanding"],
+  purchaseOrder: ["companyName", "number", "total", "expected", "supplierName"],
+  jobCard: ["companyName", "number", "title", "clientName", "technician", "status"],
+  deliveryNote: ["companyName", "number", "clientName", "deliveryDate", "itemCount"],
+} as const;
+
+export type TemplateVars = Record<string, string | number | undefined>;
+
+/** Replaces {placeholder} tokens (e.g. "{number}") with values. */
+export function renderTemplate(template: string, vars: TemplateVars) {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
+    const value = vars[key];
+    return value === undefined || value === null ? match : String(value);
+  });
+}
+
+export const DEFAULT_EMAIL_TEMPLATES: Record<string, { subject: string; greeting: string }> = {
+  invoice: {
+    subject: "Invoice {number} from {companyName}",
+    greeting: "Please find attached invoice {number} for {total}, due {dueDate}.",
+  },
+  quotation: {
+    subject: "Quotation {number} from {companyName}",
+    greeting: "Please find attached quotation {number} for {total}, valid until {validUntil}.",
+  },
+  statement: {
+    subject: "Statement of account from {companyName}",
+    greeting: "Please find attached your statement of account for {period}.",
+  },
+  purchaseOrder: {
+    subject: "Purchase order {number} from {companyName}",
+    greeting: "Please find attached purchase order {number} for {total}.",
+  },
+  jobCard: {
+    subject: "Job card {number} from {companyName}",
+    greeting: "Please find attached job card {number}.",
+  },
+  deliveryNote: {
+    subject: "Delivery note {number} from {companyName}",
+    greeting: "Please find attached delivery note {number} confirming {itemCount} item(s) delivered on {deliveryDate}.",
+  },
+};
+
+/**
+ * Email subject/greeting templates, merging anything the user stored in
+ * settings over the built-in defaults. `settings.emailTemplates` is a JSON
+ * object shaped like `{ invoice: { subject, greeting }, ... }`.
+ */
+export function getEmailTemplates(settings: {
+  emailTemplates: string | null;
+}): Record<string, { subject: string; greeting: string }> {
+  const merged: Record<string, { subject: string; greeting: string }> = {};
+  for (const [key, def] of Object.entries(DEFAULT_EMAIL_TEMPLATES)) {
+    merged[key] = { ...def };
+  }
+  if (settings.emailTemplates) {
+    try {
+      const stored = JSON.parse(settings.emailTemplates) as Record<
+        string,
+        Partial<{ subject: string; greeting: string }>
+      >;
+      for (const [key, value] of Object.entries(stored)) {
+        if (merged[key] && value) {
+          if (typeof value.subject === "string") merged[key].subject = value.subject;
+          if (typeof value.greeting === "string") merged[key].greeting = value.greeting;
+        }
+      }
+    } catch {
+      // Ignore malformed stored JSON and fall back to defaults.
+    }
+  }
+  return merged;
+}
+
 export type EmailCompany = {
   name: string;
   address?: string | null;
@@ -15,6 +92,8 @@ export type EmailCompany = {
   phone?: string | null;
   bankDetails?: string | null;
   logoUrl?: string | null;
+  registrationNumber?: string | null;
+  vatNumber?: string | null;
 };
 
 /**
@@ -155,6 +234,16 @@ export function buildDocumentEmail({
                 ${
                   company.address
                     ? `<tr><td style="padding-top:2px; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#5B6472; line-height:1.5;">${escapeHtml(company.address).replace(/\n/g, "<br/>")}</td></tr>`
+                    : ""
+                }
+                ${
+                  company.registrationNumber
+                    ? `<tr><td style="padding-top:2px; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#5B6472;">Reg: ${escapeHtml(company.registrationNumber)}</td></tr>`
+                    : ""
+                }
+                ${
+                  company.vatNumber
+                    ? `<tr><td style="padding-top:2px; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#5B6472;">VAT: ${escapeHtml(company.vatNumber)}</td></tr>`
                     : ""
                 }
                 ${

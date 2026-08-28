@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader, LinkButton, EmptyState, Card } from "@/components/ui";
 import { formatDate, formatMoney } from "@/lib/money";
 import { calcTotals } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
 import { toggleRecurringActive } from "@/lib/actions/recurring";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,8 @@ const FREQUENCY_LABEL: Record<string, string> = {
 };
 
 export default async function RecurringPage() {
+  const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
   const rows = await db.query.recurringInvoices.findMany({
     with: { client: true, items: true },
     orderBy: (recurringInvoices, { asc }) => [asc(recurringInvoices.nextRunDate)],
@@ -53,7 +56,7 @@ export default async function RecurringPage() {
                       <span>·</span>
                       <span>Next: {formatDate(r.nextRunDate)}</span>
                       <span>·</span>
-                      <span className="font-mono">{formatMoney(total)}</span>
+                      <span className="font-mono">{money(total)}</span>
                       {r.autoSend && (
                         <>
                           <span>·</span>

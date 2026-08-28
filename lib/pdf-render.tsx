@@ -17,6 +17,9 @@ export async function renderStatementPDFBuffer(props: {
     phone?: string | null;
     address?: string | null;
     logoData?: string | null;
+    registrationNumber?: string | null;
+    vatNumber?: string | null;
+    currency?: string;
   };
 }) {
   return renderToBuffer(<StatementPDF {...props} />);

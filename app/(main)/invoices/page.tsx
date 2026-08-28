@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader, LinkButton, EmptyState } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import { formatDate, formatMoney } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
 import { computeInvoice } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ export default async function InvoicesPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
+  const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
   const rows = await db.query.invoices.findMany({
     with: { client: true, items: true, payments: true },
     orderBy: (invoices, { desc }) => [desc(invoices.createdAt)],
@@ -77,7 +80,7 @@ export default async function InvoicesPage({
                   <td className="px-4 py-3">{inv.client?.name}</td>
                   <td className="px-4 py-3 text-ink-soft">{formatDate(inv.issueDate)}</td>
                   <td className="px-4 py-3 text-ink-soft">{formatDate(inv.dueDate)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{formatMoney(inv.computed.total)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{money(inv.computed.total)}</td>
                   <td className="px-4 py-3 text-right">
                     <StatusStamp status={inv.computed.effectiveStatus} />
                   </td>

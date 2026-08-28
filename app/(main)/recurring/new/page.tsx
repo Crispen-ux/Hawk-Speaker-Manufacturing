@@ -70,6 +70,7 @@ export default async function NewRecurringPage() {
             initialTaxRate={settings.defaultTaxRate}
             initialDiscount="0"
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (shown on each generated invoice)">

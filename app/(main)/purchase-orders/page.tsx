@@ -4,6 +4,7 @@ import { PageHeader, LinkButton, EmptyState } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import { formatDate, formatMoney } from "@/lib/money";
 import { calcTotals } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ export default async function PurchaseOrdersPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
+  const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
   const rows = await db.query.purchaseOrders.findMany({
     with: { supplier: true, items: true },
     orderBy: (purchaseOrders, { desc }) => [desc(purchaseOrders.createdAt)],
@@ -74,7 +77,7 @@ export default async function PurchaseOrdersPage({
                   </td>
                   <td className="px-4 py-3">{po.supplier?.name}</td>
                   <td className="px-4 py-3 text-ink-soft">{formatDate(po.issueDate)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{formatMoney(po.totals.total)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{money(po.totals.total)}</td>
                   <td className="px-4 py-3 text-right">
                     <StatusStamp status={po.status} />
                   </td>

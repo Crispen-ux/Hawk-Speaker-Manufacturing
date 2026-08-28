@@ -4,6 +4,7 @@ import { eq, and, gte, lte } from "drizzle-orm";
 import { renderToBuffer } from "@react-pdf/renderer";
 import StatementPDF from "@/components/pdf/StatementPDF";
 import { getSettings } from "@/lib/numbering";
+import { companyFromSettings } from "@/lib/company";
 import { toNumber } from "@/lib/money";
 import { NextRequest } from "next/server";
 
@@ -49,13 +50,7 @@ export async function GET(
       fromDate={from}
       toDate={to}
       rows={statementRows}
-      company={{
-        companyName: settings.companyName,
-        email: settings.email,
-        phone: settings.phone,
-        address: settings.address,
-        logoData: settings.logoData,
-      }}
+      company={companyFromSettings(settings)}
     />
   );
 

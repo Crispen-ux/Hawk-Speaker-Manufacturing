@@ -4,11 +4,14 @@ import { desc } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, LinkButton, EmptyState } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
 import { toggleCatalogItemActive } from "@/lib/actions/catalog";
 
 export const dynamic = "force-dynamic";
 
 export default async function CatalogPage() {
+  const settings = await getSettings();
+  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
   const rows = await db.select().from(catalogItems).orderBy(desc(catalogItems.createdAt));
 
   return (
@@ -50,7 +53,7 @@ export default async function CatalogPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-ink-soft">{item.unit || "—"}</td>
-                    <td className="px-4 py-3 text-right font-mono">{formatMoney(item.unitPrice)}</td>
+                    <td className="px-4 py-3 text-right font-mono">{money(item.unitPrice)}</td>
                     <td className="px-4 py-3 text-right">
                       <form action={toggle}>
                         <button

@@ -66,6 +66,7 @@ export default async function NewPurchaseOrderPage() {
             initialTaxRate={settings.defaultTaxRate}
             initialDiscount="0"
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (shown on PDF)">

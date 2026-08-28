@@ -62,7 +62,7 @@ export default async function NewInvoicePage({
               <input type="date" name="issueDate" defaultValue={todayISO()} required className={inputClass} />
             </Field>
             <Field label="Due date">
-              <input type="date" name="dueDate" defaultValue={plusDaysISO(14)} required className={inputClass} />
+              <input type="date" name="dueDate" defaultValue={plusDaysISO(settings.paymentTermsDays ?? 14)} required className={inputClass} />
             </Field>
           </div>
 
@@ -71,6 +71,7 @@ export default async function NewInvoicePage({
             initialTaxRate={settings.defaultTaxRate}
             initialDiscount="0"
             catalogItems={catalog}
+            currency={settings.currency}
           />
 
           <Field label="Notes (shown on PDF)">

@@ -12,12 +12,15 @@ export default function LineItemsEditor({
   initialTaxRate,
   initialDiscount,
   catalogItems = [],
+  currency = "R",
 }: {
   initialItems: Item[];
   initialTaxRate: string;
   initialDiscount: string;
   catalogItems?: CatalogOption[];
+  currency?: string;
 }) {
+  const money = (v: string | number | null | undefined) => formatMoney(v, currency || "R");
   const [items, setItems] = useState<Item[]>(
     initialItems.length > 0 ? initialItems : [{ description: "", quantity: "1", unitPrice: "0" }]
   );
@@ -70,7 +73,7 @@ export default function LineItemsEditor({
             <option value="">Add from catalogue…</option>
             {catalogItems.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} — {formatMoney(c.unitPrice)}
+                {c.name} — {money(c.unitPrice)}
                 {c.unit ? ` / ${c.unit}` : ""}
               </option>
             ))}
@@ -118,7 +121,7 @@ export default function LineItemsEditor({
               className={`${inputClass} font-mono`}
             />
             <div className="text-right font-mono text-sm text-ink">
-              {formatMoney(toNumber(it.quantity) * toNumber(it.unitPrice))}
+              {money(toNumber(it.quantity) * toNumber(it.unitPrice))}
             </div>
             <button
               type="button"
@@ -145,7 +148,7 @@ export default function LineItemsEditor({
         <div className="w-72 space-y-2.5">
           <div className="flex items-center justify-between text-sm">
             <span className="text-ink-soft">Subtotal</span>
-            <span className="font-mono">{formatMoney(subtotal)}</span>
+            <span className="font-mono">{money(subtotal)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-ink-soft">Discount</span>
@@ -169,7 +172,7 @@ export default function LineItemsEditor({
           </div>
           <div className="flex items-center justify-between border-t border-rule pt-2.5 text-base font-semibold">
             <span>Total</span>
-            <span className="font-mono">{formatMoney(total)}</span>
+            <span className="font-mono">{money(total)}</span>
           </div>
         </div>
       </div>
