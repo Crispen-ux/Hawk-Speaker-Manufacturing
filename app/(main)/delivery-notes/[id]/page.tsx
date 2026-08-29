@@ -6,15 +6,20 @@ import Link from "next/link";
 import { setDeliveryNoteStatus, deleteDeliveryNote } from "@/lib/actions/deliveryNotes";
 import { sendDeliveryNoteEmailAction } from "@/lib/actions/send";
 import { formatDate } from "@/lib/money";
+import { getSettings } from "@/lib/numbering";
+import { publicDocumentUrl } from "@/lib/public-links";
+import { buildDocumentWaMessage } from "@/lib/whatsapp-deeplink";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
+import WhatsAppOpenForm from "@/components/WhatsAppOpenForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function DeliveryNoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const dnId = Number(id);
+  const settings = await getSettings();
 
   const dn = await db.query.deliveryNotes.findFirst({
     where: eq(deliveryNotes.id, dnId),
@@ -30,6 +35,25 @@ export default async function DeliveryNoteDetailPage({ params }: { params: Promi
   const setStatus = setDeliveryNoteStatus.bind(null, dnId);
   const removeDN = deleteDeliveryNote.bind(null, dnId);
   const sendAction = sendDeliveryNoteEmailAction.bind(null, dnId);
+  const waLink = await publicDocumentUrl({ kind: "deliveryNote", documentId: dnId });
+  const waMessage = buildDocumentWaMessage(
+    {
+      number: dn.number,
+      status: dn.status,
+      clientName: dn.client?.name,
+      items: dn.items.map((it) => ({ description: it.description, quantity: it.quantity, unitPrice: "0" })),
+      taxRate: "0",
+      discount: "0",
+      notes: dn.notes,
+    },
+    {
+      companyName: settings.companyName,
+      currency: settings.currency || "R",
+      kindLabel: "DELIVERY NOTE",
+      link: waLink,
+      showPricing: false,
+    }
+  );
 
   return (
     <div>
@@ -111,6 +135,17 @@ export default async function DeliveryNoteDetailPage({ params }: { params: Promi
                 Last sent {formatDate(dn.lastSentAt.toISOString())}
               </p>
             )}
+          </Card>
+
+          <Card>
+            <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">
+              Send by WhatsApp
+            </h3>
+            <WhatsAppOpenForm
+              defaultPhone={dn.client?.phone ?? settings.phone}
+              message={waMessage}
+              buttonLabel="Open in WhatsApp"
+            />
           </Card>
 
           <Card>

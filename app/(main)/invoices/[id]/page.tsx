@@ -3,14 +3,16 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { invoices } from "@/db/schema";
 import { setInvoiceStatus, deleteInvoice, addPayment, deletePayment } from "@/lib/actions/invoices";
-import { sendInvoiceEmailAction, sendInvoiceWhatsAppAction, sendPaymentReminderAction } from "@/lib/actions/send";
+import { sendInvoiceEmailAction, sendPaymentReminderAction } from "@/lib/actions/send";
 import { computeInvoice } from "@/lib/calc";
 import { formatDate, formatMoney, toNumber } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
+import { publicDocumentUrl } from "@/lib/public-links";
+import { buildDocumentWaMessage } from "@/lib/whatsapp-deeplink";
 import { PageHeader, GhostLink, Card, Field, inputClass, PrimaryButton } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
-import SendWhatsAppForm from "@/components/SendWhatsAppForm";
+import WhatsAppOpenForm from "@/components/WhatsAppOpenForm";
 import PaymentReminderForm from "@/components/PaymentReminderForm";
 import AuditTimeline from "@/components/AuditTimeline";
 import { getAuditForDocument } from "@/lib/audit";
@@ -35,7 +37,27 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const removeInvoice = deleteInvoice.bind(null, invoiceId);
   const recordPayment = addPayment.bind(null, invoiceId);
   const sendAction = sendInvoiceEmailAction.bind(null, invoiceId);
-  const waAction = sendInvoiceWhatsAppAction.bind(null, invoiceId);
+  const waLink = await publicDocumentUrl({ kind: "invoice", documentId: invoiceId });
+  const waMessage = buildDocumentWaMessage(
+    {
+      number: invoice.number,
+      status: totals.effectiveStatus,
+      clientName: invoice.client?.name,
+      items: invoice.items,
+      taxRate: invoice.taxRate,
+      discount: invoice.discount,
+      notes: invoice.notes,
+      paid: totals.paid,
+      dueLabel: "Due",
+      dueValue: formatDate(invoice.dueDate),
+    },
+    {
+      companyName: settings.companyName,
+      currency: settings.currency || "R",
+      kindLabel: "INVOICE",
+      link: waLink,
+    }
+  );
   const reminderAction = sendPaymentReminderAction.bind(null, invoiceId);
 
   return (
@@ -208,9 +230,15 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">
               Send by WhatsApp
             </h3>
-            <SendWhatsAppForm action={waAction} defaultTo={invoice.client?.phone} buttonLabel="Send invoice by WhatsApp" />
-            {!invoice.client?.phone && (
-              <p className="mt-3 text-xs text-ink-soft">No phone on file — add one or type it in.</p>
+            <WhatsAppOpenForm
+              defaultPhone={invoice.client?.phone ?? settings.phone}
+              message={waMessage}
+              buttonLabel="Open in WhatsApp"
+            />
+            {!invoice.client?.phone && !settings.phone && (
+              <p className="mt-3 text-xs text-ink-soft">
+                No phone on file — add the client's number or type it in above.
+              </p>
             )}
           </Card>
 

@@ -7,9 +7,12 @@ import { sendQuotationEmailAction } from "@/lib/actions/send";
 import { computeQuotation } from "@/lib/calc";
 import { formatDate, formatMoney, toNumber } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
+import { publicDocumentUrl } from "@/lib/public-links";
+import { buildDocumentWaMessage } from "@/lib/whatsapp-deeplink";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
+import WhatsAppOpenForm from "@/components/WhatsAppOpenForm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +34,26 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
   const removeQuotation = deleteQuotation.bind(null, quotationId);
   const convert = convertToInvoice.bind(null, quotationId);
   const sendAction = sendQuotationEmailAction.bind(null, quotationId);
+  const waLink = await publicDocumentUrl({ kind: "quotation", documentId: quotationId });
+  const waMessage = buildDocumentWaMessage(
+    {
+      number: quotation.number,
+      status: quotation.status,
+      clientName: quotation.client?.name,
+      items: quotation.items,
+      taxRate: quotation.taxRate,
+      discount: quotation.discount,
+      notes: quotation.notes,
+      dueLabel: "Valid until",
+      dueValue: formatDate(quotation.expiryDate),
+    },
+    {
+      companyName: settings.companyName,
+      currency: settings.currency || "R",
+      kindLabel: "QUOTATION",
+      link: waLink,
+    }
+  );
 
   return (
     <div>
@@ -138,6 +161,17 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                 Last sent {formatDate(quotation.lastSentAt.toISOString())}
               </p>
             )}
+          </Card>
+
+          <Card>
+            <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">
+              Send by WhatsApp
+            </h3>
+            <WhatsAppOpenForm
+              defaultPhone={quotation.client?.phone ?? settings.phone}
+              message={waMessage}
+              buttonLabel="Open in WhatsApp"
+            />
           </Card>
 
           <Card>
