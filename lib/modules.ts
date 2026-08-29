@@ -165,7 +165,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "reports",
     label: "Reports",
     description: "Analytics and exportable management reports.",
-    built: false,
+    href: "/reports",
+    routePrefix: "/reports",
+    built: true,
   },
   {
     key: "notifications",
