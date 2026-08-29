@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextInvoiceNumber, nextReceiptNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { notify } from "@/lib/actions/notifications";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -153,6 +154,14 @@ export async function addPayment(invoiceId: number, formData: FormData) {
 
   await logAudit({ documentKind: "invoice", documentId: invoiceId, documentNumber: invoice.number, action: "payment_recorded", detail: `${amount} received` });
   await logAudit({ documentKind: "receipt", documentId: receipt.id, documentNumber: number, action: "receipt_issued", detail: `for invoice ${invoice.number}` });
+
+  void notify({
+    title: `Payment of ${amount} received`,
+    message: `For invoice ${invoice.number}`,
+    documentKind: "receipt",
+    documentId: receipt.id,
+    level: "success",
+  });
 
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath("/invoices");

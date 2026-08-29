@@ -119,6 +119,9 @@ export function routeForDocument(kind: string, documentId: number): string {
     jobCard: "/job-cards",
     deliveryNote: "/delivery-notes",
     statement: "/statements",
+    expense: "/expenses",
+    asset: "/assets",
+    employee: "/employees",
   };
   const base = routes[kind];
   if (!base || documentId <= 0) return base ?? "/";

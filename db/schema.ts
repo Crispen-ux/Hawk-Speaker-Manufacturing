@@ -606,6 +606,21 @@ export const catalogItemsRelations = relations(catalogItems, ({ many }) => ({
   movements: many(inventoryMovements),
 }));
 
+// ---------- In-app notifications ----------
+// Lightweight alert feed. The notify() helper fires on key events; the
+// /notifications page lists them unread-first with mark-read controls.
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 256 }).notNull(),
+  message: text("message"),
+  documentKind: varchar("document_kind", { length: 32 }),
+  documentId: integer("document_id"),
+  level: varchar("level", { length: 16 }).notNull().default("info"),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ---------- Document depot uploads ----------
 // Files physically stored in the depot (base64 in the row). Generated PDFs
 // are rendered on demand and listed on the depot page; anything attached here

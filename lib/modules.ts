@@ -167,7 +167,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "notifications",
     label: "Notifications",
     description: "In-app alerts for overdue items and job milestones.",
-    built: false,
+    href: "/notifications",
+    routePrefix: "/notifications",
+    built: true,
   },
   {
     key: "whatsapp",

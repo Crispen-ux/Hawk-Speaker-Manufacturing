@@ -3,6 +3,7 @@ import { recurringInvoices, invoices, invoiceItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { nextInvoiceNumber } from "@/lib/numbering";
 import { sendInvoiceByEmail } from "@/lib/send";
+import { notify } from "@/lib/actions/notifications";
 
 function advanceDate(dateStr: string, frequency: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -83,6 +84,14 @@ export async function generateInvoiceFromRecurring(recurringId: number) {
       console.error(`Auto-send failed for recurring invoice ${recurringId}:`, autoSendError);
     }
   }
+
+  void notify({
+    title: `Recurring invoice ${number} generated`,
+    message: `From schedule for ${rec.client?.name ?? "client"}`,
+    documentKind: "invoice",
+    documentId: inv.id,
+    level: "info",
+  });
 
   return { invoiceId: inv.id, autoSendError };
 }
