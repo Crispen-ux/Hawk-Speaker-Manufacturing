@@ -491,6 +491,23 @@ export const assets = pgTable("assets", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ---------- Document depot uploads ----------
+// Files physically stored in the depot (base64 in the row). Generated PDFs
+// are rendered on demand and listed on the depot page; anything attached here
+// is stored verbatim and downloadable straight from the app.
+
+export const uploads = pgTable("uploads", {
+  id: serial("id").primaryKey(),
+  label: varchar("label", { length: 256 }).notNull(),
+  documentKind: varchar("document_kind", { length: 32 }),
+  documentId: integer("document_id"),
+  fileName: varchar("file_name", { length: 256 }).notNull(),
+  mimeType: varchar("mime_type", { length: 128 }),
+  size: integer("size").notNull().default(0),
+  data: text("data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ---------- Modules ----------
 // A row exists only once a module's toggle has been saved in Settings; missing
 // rows default to enabled. Keyed by the ModuleDef keys in lib/modules.ts.

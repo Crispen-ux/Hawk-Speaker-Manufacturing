@@ -177,7 +177,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "documents",
     label: "Documents",
     description: "Central depot of generated PDFs and uploads.",
-    built: false,
+    href: "/documents",
+    routePrefix: "/documents",
+    built: true,
   },
   {
     key: "creditNotes",
