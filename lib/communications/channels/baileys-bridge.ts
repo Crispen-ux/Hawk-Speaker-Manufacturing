@@ -13,8 +13,8 @@ import type { WhatsAppDriver } from "./whatsapp";
  *   WHATSAPP_BRIDGE_URL   e.g. http://localhost:3789
  *   WHATSAPP_BRIDGE_TOKEN optional shared secret, must match the bridge.
  */
-const bridgeUrl = (process.env.WHATSAPP_BRIDGE_URL ?? "").replace(/\/+$/, "");
-const bridgeToken = process.env.WHATSAPP_BRIDGE_TOKEN ?? "";
+const bridgeUrl = () => (process.env.WHATSAPP_BRIDGE_URL ?? "").replace(/\/+$/, "");
+const bridgeToken = () => process.env.WHATSAPP_BRIDGE_TOKEN ?? "";
 
 /** Normalise a free-form phone number to international digits (defaults to SA). */
 function normalizePhone(input: string): string | null {
@@ -29,10 +29,10 @@ function normalizePhone(input: string): string | null {
 export const baileysBridgeDriver: WhatsAppDriver = {
   name: "baileys",
 
-  isConfigured: () => Boolean(bridgeUrl),
+  isConfigured: () => Boolean(bridgeUrl()),
 
   async send(to: string, body: string, link?: string): Promise<void> {
-    if (!bridgeUrl) throw new Error("WHATSAPP_BRIDGE_URL is not set — the bridge process isn't configured.");
+    if (!bridgeUrl()) throw new Error("WHATSAPP_BRIDGE_URL is not set — the bridge process isn't configured.");
     const phone = normalizePhone(to);
     if (!phone) {
       throw new Error(
@@ -40,11 +40,11 @@ export const baileysBridgeDriver: WhatsAppDriver = {
       );
     }
 
-    const res = await fetch(`${bridgeUrl}/send`, {
+    const res = await fetch(`${bridgeUrl()}/send`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(bridgeToken ? { authorization: `Bearer ${bridgeToken}` } : {}),
+        ...(bridgeToken() ? { authorization: `Bearer ${bridgeToken()}` } : {}),
       },
       body: JSON.stringify({ to: phone, body, link }),
       signal: AbortSignal.timeout(60_000),

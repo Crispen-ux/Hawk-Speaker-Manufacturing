@@ -29,10 +29,35 @@ export function registerWhatsAppDriver(driver: WhatsAppDriver): void {
 }
 
 function activeDriver(): WhatsAppDriver | null {
+  return activeDriverWithReason().driver;
+}
+
+/** Returns the active driver, plus a human explanation when there is none. */
+function activeDriverWithReason(): {
+  driver: WhatsAppDriver | null;
+  reason: string | null;
+} {
   const provider = process.env.WHATSAPP_PROVIDER;
-  if (!provider) return null;
+  if (!provider) {
+    return {
+      driver: null,
+      reason: "WHATSAPP_PROVIDER isn't set — set it to \"baileys\" (and WHATSAPP_BRIDGE_URL) in your env, then restart the server.",
+    };
+  }
   const driver = drivers[provider];
-  return driver && driver.isConfigured() ? driver : null;
+  if (!driver) {
+    return {
+      driver: null,
+      reason: `WHATSAPP_PROVIDER is "${provider}", but no driver by that name is registered.`,
+    };
+  }
+  if (!driver.isConfigured()) {
+    return {
+      driver: null,
+      reason: `The "${provider}" driver is registered but missing its config env vars.`,
+    };
+  }
+  return { driver, reason: null };
 }
 
 function isConfigured(): boolean {
@@ -53,14 +78,13 @@ export const whatsappChannel: CommunicationChannel = {
         error: "No phone number for the recipient; message skipped.",
       };
     }
-    const driver = activeDriver();
+    const { driver, reason } = activeDriverWithReason();
     if (!driver) {
       return {
         channel: "whatsapp",
         ok: false,
         delivered: false,
-        message:
-          "WhatsApp isn't configured yet — no provider driver is registered. Message skipped; your account is unaffected.",
+        message: `WhatsApp isn't configured yet — ${reason ?? "no provider driver could be activated."} Message skipped; your account is unaffected.`,
       };
     }
 
