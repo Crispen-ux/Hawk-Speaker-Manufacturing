@@ -582,6 +582,30 @@ export const employeesRelations = relations(employees, ({ many }) => ({
   leaveRequests: many(leaveRequests),
 }));
 
+// ---------- Inventory movements ----------
+// Stock is derived from this ledger: positive delta = in, negative = out.
+// Querying and grouping these rows gives stock-on-hand per catalogue item.
+
+export const inventoryMovements = pgTable("inventory_movements", {
+  id: serial("id").primaryKey(),
+  catalogItemId: integer("catalog_item_id")
+    .references(() => catalogItems.id, { onDelete: "cascade" })
+    .notNull(),
+  deltaQty: numeric("delta_qty", { precision: 12, scale: 2 }).notNull(),
+  reason: varchar("reason", { length: 64 }).notNull(),
+  reference: varchar("reference", { length: 128 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const inventoryMovementsRelations = relations(inventoryMovements, ({ one }) => ({
+  item: one(catalogItems, { fields: [inventoryMovements.catalogItemId], references: [catalogItems.id] }),
+}));
+
+export const catalogItemsRelations = relations(catalogItems, ({ many }) => ({
+  movements: many(inventoryMovements),
+}));
+
 // ---------- Document depot uploads ----------
 // Files physically stored in the depot (base64 in the row). Generated PDFs
 // are rendered on demand and listed on the depot page; anything attached here

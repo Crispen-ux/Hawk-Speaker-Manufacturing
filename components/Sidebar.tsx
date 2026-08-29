@@ -27,6 +27,7 @@ import {
   Briefcase,
   Wallet,
   CalendarDays,
+  Layers,
 } from "lucide-react";
 
 const links = [
@@ -48,6 +49,7 @@ const links = [
   { href: "/expenses", label: "Expenses", icon: Wallet, module: "expenses" },
   { href: "/hr", label: "HR", icon: CalendarDays, module: "hr" },
   { href: "/catalog", label: "Catalogue", icon: Package, module: "catalog" },
+  { href: "/inventory", label: "Inventory", icon: Layers, module: "inventory" },
   { href: "/audit", label: "Audit log", icon: ScrollText, module: "auditLogs" },
   { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true },
 ];

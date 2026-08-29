@@ -53,7 +53,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "inventory",
     label: "Inventory",
     description: "Stock levels and movements per catalogue item.",
-    built: false,
+    href: "/inventory",
+    routePrefix: "/inventory",
+    built: true,
   },
   {
     key: "quotations",
