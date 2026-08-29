@@ -22,6 +22,9 @@ const COLORS: Record<string, string> = {
   disposed: "text-ink-soft",
   on_leave: "text-forest-2",
   terminated: "text-ink-soft",
+  pending: "text-ink-soft",
+  approved: "text-success",
+  rejected: "text-rust",
 };
 
 export default function StatusStamp({ status }: { status: string }) {

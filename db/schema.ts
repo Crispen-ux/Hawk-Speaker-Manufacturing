@@ -535,6 +535,53 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
   supplier: one(suppliers, { fields: [expenses.supplierId], references: [suppliers.id] }),
 }));
 
+// ---------- HR: contracts & leave ----------
+// Employment contracts and leave requests, both scoped to a single employee.
+
+export const contractTypeEnum = pgEnum("contract_type", ["permanent", "fixed_term", "intern", "part_time"]);
+
+export const contracts = pgTable("contracts", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employee_id")
+    .references(() => employees.id, { onDelete: "cascade" })
+    .notNull(),
+  type: contractTypeEnum("type").default("permanent").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  hourlyRate: varchar("hourly_rate", { length: 64 }).default("0").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const leaveStatusEnum = pgEnum("leave_status", ["pending", "approved", "rejected"]);
+
+export const leaveRequests = pgTable("leave_requests", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employee_id")
+    .references(() => employees.id, { onDelete: "cascade" })
+    .notNull(),
+  type: varchar("type", { length: 32 }).notNull().default("annual"),
+  fromDate: date("from_date").notNull(),
+  toDate: date("to_date").notNull(),
+  days: integer("days").notNull().default(1),
+  status: leaveStatusEnum("status").default("pending").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const contractsRelations = relations(contracts, ({ one }) => ({
+  employee: one(employees, { fields: [contracts.employeeId], references: [employees.id] }),
+}));
+
+export const leaveRequestsRelations = relations(leaveRequests, ({ one }) => ({
+  employee: one(employees, { fields: [leaveRequests.employeeId], references: [employees.id] }),
+}));
+
+export const employeesRelations = relations(employees, ({ many }) => ({
+  contracts: many(contracts),
+  leaveRequests: many(leaveRequests),
+}));
+
 // ---------- Document depot uploads ----------
 // Files physically stored in the depot (base64 in the row). Generated PDFs
 // are rendered on demand and listed on the depot page; anything attached here

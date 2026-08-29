@@ -143,7 +143,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "hr",
     label: "HR",
     description: "Contracts, leave and employee records.",
-    built: false,
+    href: "/hr",
+    routePrefix: "/hr",
+    built: true,
   },
   {
     key: "assets",
