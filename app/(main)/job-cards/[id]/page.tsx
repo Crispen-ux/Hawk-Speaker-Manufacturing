@@ -7,9 +7,12 @@ import { setJobCardStatus, deleteJobCard, convertJobCardToInvoice } from "@/lib/
 import { sendJobCardEmailAction } from "@/lib/actions/send";
 import { calcTotals, formatDate, formatMoney, toNumber } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
+import { publicDocumentUrl } from "@/lib/public-links";
+import { buildDocumentWaMessage } from "@/lib/whatsapp-deeplink";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
+import WhatsAppOpenForm from "@/components/WhatsAppOpenForm";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +33,27 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
   const removeJob = deleteJobCard.bind(null, jobId);
   const convert = convertJobCardToInvoice.bind(null, jobId);
   const sendAction = sendJobCardEmailAction.bind(null, jobId);
+  const waLink = await publicDocumentUrl({ kind: "jobCard", documentId: jobId });
+  const waMessage = buildDocumentWaMessage(
+    {
+      number: job.number,
+      status: job.status,
+      clientName: job.client?.name ?? job.title,
+      items: job.items,
+      taxRate: job.taxRate,
+      discount: job.discount,
+      notes: [job.title, job.description, job.notes].filter(Boolean).join("\n"),
+      dueLabel: job.completedDate ? "Completed" : undefined,
+      dueValue: job.completedDate ? formatDate(job.completedDate) : undefined,
+    },
+    {
+      companyName: settings.companyName,
+      currency: settings.currency || "R",
+      kindLabel: "JOB CARD",
+      link: waLink,
+      showPricing: job.items.length > 0,
+    }
+  );
 
   return (
     <div>
@@ -142,6 +166,17 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
                 Last sent {formatDate(job.lastSentAt.toISOString())}
               </p>
             )}
+          </Card>
+
+          <Card>
+            <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">
+              Send by WhatsApp
+            </h3>
+            <WhatsAppOpenForm
+              defaultPhone={job.client?.phone ?? settings.phone}
+              message={waMessage}
+              buttonLabel="Open in WhatsApp"
+            />
           </Card>
 
           <Card>

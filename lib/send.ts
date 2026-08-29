@@ -15,6 +15,7 @@ import { getWhatsAppTemplates } from "@/lib/communications/templates";
 import { publicDocumentUrl } from "@/lib/public-links";
 import { getBaseUrl } from "@/lib/base-url";
 import { logAudit } from "@/lib/audit";
+import { waMeUrl, normalizeWaPhone } from "@/lib/whatsapp-deeplink";
 import {
   dispatch,
   type ChannelName,
@@ -474,6 +475,19 @@ export async function sendStatementByWhatsApp(
     detail: `client ${built.client.name} · ${fromDate} → ${toDate} · ${toPhone ?? ""}`.trim(),
   });
   return summary;
+}
+
+/** Builds a wa.me deep link for a client's statement — message + public link included. */
+export async function buildStatementWhatsAppUrl(
+  clientId: number,
+  fromDate: string,
+  toDate: string,
+  phone: string
+): Promise<string> {
+  const built = await buildStatementDelivery(clientId, "", fromDate, toDate, {});
+  const digits = normalizeWaPhone(phone);
+  if (!digits) throw new Error("Enter a valid WhatsApp number, e.g. +27 82 000 0000.");
+  return waMeUrl(digits, built.message.text);
 }
 
 /* ------------------------------------------------------------------ */

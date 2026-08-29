@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { invoices, quotations, clients, deliveryNotes, creditNotes, receipts, expenses, suppliers } from "@/db/schema";
+import { invoices, quotations, clients, deliveryNotes, jobCards, creditNotes, receipts, expenses, suppliers } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
 import { companyFromSettings } from "@/lib/company";
@@ -119,6 +119,46 @@ export async function renderDeliveryNotePdf(dnId: number): Promise<SharedPDF> {
   });
 
   return { buffer: Buffer.from(buffer), filename: `${dn.number}.pdf`, title: `Delivery note ${dn.number}` };
+}
+
+/** Renders the PDF for a job card (labour/parts on a job, pricing optional). */
+export async function renderJobCardPdf(jobId: number): Promise<SharedPDF> {
+  const job = await db.query.jobCards.findFirst({
+    where: eq(jobCards.id, jobId),
+    with: { client: true, items: true },
+  });
+  if (!job) notFound();
+
+  const settings = await getSettings();
+  const hasItems = job.items.length > 0;
+  const extraMeta = [
+    job.technician ? { label: "Technician" as const, value: job.technician } : null,
+    job.equipment ? { label: "Equipment / asset" as const, value: job.equipment } : null,
+  ].filter((m): m is { label: "Technician" | "Equipment / asset"; value: string } => m !== null);
+
+  const buffer = await renderDocPDFBuffer({
+    kind: "Job Card",
+    number: job.number,
+    status: job.status,
+    issueDate: job.openedDate,
+    dueOrExpiryLabel: "Completed",
+    dueOrExpiryDate: job.completedDate ?? "",
+    partyLabel: "Client",
+    client: {
+      name: job.client?.name ?? "",
+      email: job.client?.email,
+      address: job.client?.address,
+    },
+    extraMeta,
+    items: job.items,
+    taxRate: job.taxRate,
+    discount: job.discount,
+    notes: [job.title, job.description, job.notes].filter(Boolean).join("\n\n"),
+    showPricing: hasItems,
+    company: companyFromSettings(settings),
+  });
+
+  return { buffer: Buffer.from(buffer), filename: `${job.number}.pdf`, title: `Job card ${job.number}` };
 }
 
 /** Renders the PDF for a credit note (a negative-value document against an invoice). */

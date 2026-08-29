@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { clients } from "@/db/schema";
+import { getSettings } from "@/lib/numbering";
 import { PageHeader, Card, EmptyState, LinkButton } from "@/components/ui";
 import StatementForm from "@/components/StatementForm";
 
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function StatementsPage() {
   const allClients = await db.select().from(clients).orderBy(clients.name);
+  const settings = await getSettings();
 
   return (
     <div>
@@ -20,7 +22,10 @@ export default async function StatementsPage() {
         />
       ) : (
         <Card className="max-w-xl">
-          <StatementForm clients={allClients.map((c) => ({ id: c.id, name: c.name, email: c.email }))} />
+          <StatementForm
+            clients={allClients.map((c) => ({ id: c.id, name: c.name, email: c.email, phone: c.phone }))}
+            fallbackPhone={settings.phone}
+          />
         </Card>
       )}
     </div>

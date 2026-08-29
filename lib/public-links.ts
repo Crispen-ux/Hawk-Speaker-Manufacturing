@@ -13,7 +13,7 @@ import { getBaseUrl } from "@/lib/base-url";
  * revoked by deleting its row.
  */
 
-export type SharedLinkKind = "invoice" | "quotation" | "deliveryNote" | "statement" | "creditNote" | "receipt";
+export type SharedLinkKind = "invoice" | "quotation" | "deliveryNote" | "statement" | "creditNote" | "receipt" | "jobCard";
 export type PersistedLinkKind = Exclude<SharedLinkKind, "statement">;
 
 export type SharedLinkMeta =
