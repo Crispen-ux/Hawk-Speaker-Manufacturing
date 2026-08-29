@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { uploads } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
 
@@ -31,4 +33,5 @@ export async function uploadDocument(formData: FormData) {
 export async function deleteUpload(id: number) {
   await db.delete(uploads).where(eq(uploads.id, id));
   revalidatePath("/documents");
+  redirect(flashUrl(`/documents`, "Upload deleted"));
 }

@@ -5,6 +5,7 @@ import { PageHeader, LinkButton, EmptyState } from "@/components/ui";
 import { formatDate, formatMoney } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
 import { deletePayment } from "@/lib/actions/invoices";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -118,9 +119,9 @@ const clientName = new Map(clientRows.map((c) => [c.id, c.name]));
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <form action={remove}>
+                      <ConfirmForm action={remove} confirm="Delete this payment? The receipt attached to it is removed too.">
                         <button className="font-mono text-xs text-rust hover:underline">delete</button>
-                      </form>
+                      </ConfirmForm>
                     </td>
                   </tr>
                 );

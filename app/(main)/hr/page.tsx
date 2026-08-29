@@ -4,6 +4,7 @@ import { contracts, leaveRequests } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import { PageHeader, LinkButton, EmptyState } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
+import ConfirmForm from "@/components/ConfirmForm";
 import { formatDate } from "@/lib/money";
 import { deleteContract, setLeaveStatus } from "@/lib/actions/hr";
 
@@ -63,9 +64,9 @@ export default async function HRPage() {
                     <td className="px-4 py-3 text-ink-soft">{formatDate(c.startDate)}</td>
                     <td className="px-4 py-3 text-ink-soft">{c.endDate ? formatDate(c.endDate) : "Open-ended"}</td>
                     <td className="px-4 py-3 text-right">
-                      <form action={remove}>
+                      <ConfirmForm action={remove} confirm="Remove this contract? This can't be undone.">
                         <button className="font-mono text-xs text-rust hover:underline">remove</button>
-                      </form>
+                      </ConfirmForm>
                     </td>
                   </tr>
                 );

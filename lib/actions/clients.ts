@@ -5,6 +5,7 @@ import { clients } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 export async function createClient(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -22,7 +23,7 @@ export async function createClient(formData: FormData) {
     .returning({ id: clients.id });
 
   revalidatePath("/clients");
-  redirect(`/clients/${row.id}`);
+  redirect(flashUrl(`/clients/${row.id}` , "Client created"));
 }
 
 export async function updateClient(id: number, formData: FormData) {
@@ -44,5 +45,5 @@ export async function updateClient(id: number, formData: FormData) {
 export async function deleteClient(id: number) {
   await db.delete(clients).where(eq(clients.id, id));
   revalidatePath("/clients");
-  redirect("/clients");
+  redirect(flashUrl(`/clients` , "Client deleted"));
 }

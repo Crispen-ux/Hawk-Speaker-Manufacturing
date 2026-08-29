@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { invoices, quotations, creditNotes, receipts, deliveryNotes, uploads, clients } from "@/db/schema";
 import { desc, inArray } from "drizzle-orm";
 import { PageHeader, Card, Field, inputClass, PrimaryButton } from "@/components/ui";
+import ConfirmForm from "@/components/ConfirmForm";
 import { uploadDocument, deleteUpload } from "@/lib/actions/documents";
 import { formatDate } from "@/lib/money";
 
@@ -149,9 +150,9 @@ export default async function DocumentsPage() {
                         <a href={`/api/documents/download/${u.id}`} className="font-mono text-xs text-forest hover:underline">
                           download
                         </a>
-                        <form action={remove}>
+                        <ConfirmForm action={remove} confirm="Delete this upload permanently? This can't be undone.">
                           <button className="font-mono text-xs text-rust hover:underline">remove</button>
-                        </form>
+                        </ConfirmForm>
                       </div>
                     </td>
                   </tr>

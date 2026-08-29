@@ -5,6 +5,7 @@ import { suppliers } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 export async function createSupplier(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -22,7 +23,7 @@ export async function createSupplier(formData: FormData) {
     .returning({ id: suppliers.id });
 
   revalidatePath("/suppliers");
-  redirect(`/suppliers/${row.id}`);
+  redirect(flashUrl(`/suppliers/${row.id}` , "Supplier created"));
 }
 
 export async function updateSupplier(id: number, formData: FormData) {
@@ -44,5 +45,5 @@ export async function updateSupplier(id: number, formData: FormData) {
 export async function deleteSupplier(id: number) {
   await db.delete(suppliers).where(eq(suppliers.id, id));
   revalidatePath("/suppliers");
-  redirect("/suppliers");
+  redirect(flashUrl(`/suppliers` , "Supplier deleted"));
 }

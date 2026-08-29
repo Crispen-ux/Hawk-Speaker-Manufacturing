@@ -7,6 +7,7 @@ import { formatDate, formatMoney } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -87,11 +88,11 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
             </div>
           </Card>
 
-          <form action={remove}>
+          <ConfirmForm action={remove} confirm="Delete this employee? Their payroll and leave records go with them.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete employee
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

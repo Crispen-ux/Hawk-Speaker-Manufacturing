@@ -5,6 +5,7 @@ import { inventoryMovements } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 export async function recordMovement(formData: FormData) {
   const itemId = Number(formData.get("catalogItemId"));
@@ -23,7 +24,7 @@ export async function recordMovement(formData: FormData) {
 
   revalidatePath("/inventory");
   revalidatePath("/inventory/movements");
-  redirect("/inventory");
+  redirect(flashUrl(`/inventory` , "Movement recorded"));
 }
 
 export async function deleteMovement(id: number) {
@@ -33,4 +34,5 @@ export async function deleteMovement(id: number) {
     revalidatePath("/inventory");
     revalidatePath("/inventory/movements");
   }
+  redirect(flashUrl(`/inventory/movements`, "Movement deleted"));
 }

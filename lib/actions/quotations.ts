@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextInvoiceNumber, nextQuotationNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { flashUrl } from "@/lib/flash";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -59,7 +60,7 @@ export async function createQuotation(formData: FormData) {
   await logAudit({ documentKind: "quotation", documentId: row.id, documentNumber: number, action: "created" });
 
   revalidatePath("/quotations");
-  redirect(`/quotations/${row.id}`);
+  redirect(flashUrl(`/quotations/${row.id}` , "Quotation created"));
 }
 
 export async function updateQuotation(id: number, formData: FormData) {
@@ -94,7 +95,7 @@ export async function updateQuotation(id: number, formData: FormData) {
 
   revalidatePath("/quotations");
   revalidatePath(`/quotations/${id}`);
-  redirect(`/quotations/${id}`);
+  redirect(flashUrl(`/quotations/${id}` , "Quotation updated"));
 }
 
 export async function setQuotationStatus(
@@ -116,7 +117,7 @@ export async function deleteQuotation(id: number) {
   if (row) await logAudit({ documentKind: "quotation", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(quotations).where(eq(quotations.id, id));
   revalidatePath("/quotations");
-  redirect("/quotations");
+  redirect(flashUrl(`/quotations` , "Quotation deleted"));
 }
 
 export async function convertToInvoice(id: number) {
@@ -167,5 +168,5 @@ export async function convertToInvoice(id: number) {
 
   revalidatePath("/quotations");
   revalidatePath("/invoices");
-  redirect(`/invoices/${inv.id}`);
+  redirect(flashUrl(`/invoices/${inv.id}` , "Converted to invoice"));
 }

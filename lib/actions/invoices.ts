@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { nextInvoiceNumber, nextReceiptNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
 import { notify } from "@/lib/actions/notifications";
+import { flashUrl } from "@/lib/flash";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -60,7 +61,7 @@ export async function createInvoice(formData: FormData) {
   await logAudit({ documentKind: "invoice", documentId: row.id, documentNumber: number, action: "created" });
 
   revalidatePath("/invoices");
-  redirect(`/invoices/${row.id}`);
+  redirect(flashUrl(`/invoices/${row.id}` , "Invoice created"));
 }
 
 export async function updateInvoice(id: number, formData: FormData) {
@@ -95,7 +96,7 @@ export async function updateInvoice(id: number, formData: FormData) {
 
   revalidatePath("/invoices");
   revalidatePath(`/invoices/${id}`);
-  redirect(`/invoices/${id}`);
+  redirect(flashUrl(`/invoices/${id}` , "Invoice updated"));
 }
 
 export async function setInvoiceStatus(id: number, status: (typeof invoices.status.enumValues)[number]) {
@@ -115,7 +116,7 @@ export async function deleteInvoice(id: number) {
   if (row) await logAudit({ documentKind: "invoice", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(invoices).where(eq(invoices.id, id));
   revalidatePath("/invoices");
-  redirect("/invoices");
+  redirect(flashUrl(`/invoices` , "Invoice deleted"));
 }
 
 export async function addPayment(invoiceId: number, formData: FormData) {
@@ -201,4 +202,5 @@ export async function deletePayment(paymentId: number, invoiceId: number) {
   revalidatePath("/receipts");
   revalidatePath("/payments");
   revalidatePath("/");
+  redirect(flashUrl(`/invoices/${invoiceId}`, "Payment deleted"));
 }

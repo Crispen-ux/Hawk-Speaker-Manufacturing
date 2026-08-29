@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { notify } from "@/lib/actions/notifications";
+import { flashUrl } from "@/lib/flash";
 
 function daysBetween(from: string, to: string): number {
   const start = new Date(`${from}T00:00:00`);
@@ -29,12 +30,13 @@ export async function createContract(formData: FormData) {
   });
 
   revalidatePath("/hr");
-  redirect("/hr");
+  redirect(flashUrl(`/hr` , "Contract created"));
 }
 
 export async function deleteContract(id: number) {
   await db.delete(contracts).where(eq(contracts.id, id));
   revalidatePath("/hr");
+  redirect(flashUrl(`/hr`, "Contract deleted"));
 }
 
 export async function createLeave(formData: FormData) {
@@ -54,7 +56,7 @@ export async function createLeave(formData: FormData) {
   });
 
   revalidatePath("/hr");
-  redirect("/hr");
+  redirect(flashUrl(`/hr` , "Leave request created"));
 }
 
 export async function setLeaveStatus(id: number, status: (typeof leaveRequests.status.enumValues)[number]) {
@@ -80,4 +82,5 @@ export async function setLeaveStatus(id: number, status: (typeof leaveRequests.s
 export async function deleteLeave(id: number) {
   await db.delete(leaveRequests).where(eq(leaveRequests.id, id));
   revalidatePath("/hr");
+  redirect(flashUrl(`/hr`, "Leave request deleted"));
 }

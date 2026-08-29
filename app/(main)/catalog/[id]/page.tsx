@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { updateCatalogItem, deleteCatalogItem } from "@/lib/actions/catalog";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +40,11 @@ export default async function EditCatalogItemPage({ params }: { params: Promise<
             <PrimaryButton type="submit">Save changes</PrimaryButton>
             <div className="flex items-center gap-4">
               <GhostLink href="/catalog">Cancel</GhostLink>
-              <form action={removeWithId}>
+              <ConfirmForm action={removeWithId} confirm="Delete this product? Old invoices still referencing it will keep their descriptions.">
                 <button type="submit" className="font-mono text-xs uppercase tracking-wide text-rust hover:underline">
                   Delete
                 </button>
-              </form>
+              </ConfirmForm>
             </div>
           </div>
         </form>

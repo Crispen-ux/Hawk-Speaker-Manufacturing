@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logAudit } from "@/lib/audit";
+import { flashUrl } from "@/lib/flash";
 
 export async function createExpense(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
@@ -34,7 +35,7 @@ export async function createExpense(formData: FormData) {
   });
 
   revalidatePath("/expenses");
-  redirect(`/expenses/${row.id}`);
+  redirect(flashUrl(`/expenses/${row.id}` , "Expense created"));
 }
 
 export async function updateExpense(id: number, formData: FormData) {
@@ -57,7 +58,7 @@ export async function updateExpense(id: number, formData: FormData) {
 
   revalidatePath("/expenses");
   revalidatePath(`/expenses/${id}`);
-  redirect(`/expenses/${id}`);
+  redirect(flashUrl(`/expenses/${id}` , "Expense updated"));
 }
 
 export async function deleteExpense(id: number) {
@@ -65,5 +66,5 @@ export async function deleteExpense(id: number) {
   await db.delete(expenses).where(eq(expenses.id, id));
   if (exp) void logAudit({ documentKind: "expense", documentId: id, action: "deleted", detail: exp.description });
   revalidatePath("/expenses");
-  redirect("/expenses");
+  redirect(flashUrl(`/expenses` , "Expense deleted"));
 }

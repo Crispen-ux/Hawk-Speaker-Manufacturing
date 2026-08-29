@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextDeliveryNoteNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { flashUrl } from "@/lib/flash";
 
 type ItemInput = { description: string; quantity: string };
 
@@ -65,7 +66,7 @@ export async function createDeliveryNote(formData: FormData) {
   await logAudit({ documentKind: "deliveryNote", documentId: row.id, documentNumber: number, action: "created" });
 
   revalidatePath("/delivery-notes");
-  redirect(`/delivery-notes/${row.id}`);
+  redirect(flashUrl(`/delivery-notes/${row.id}` , "Delivery note created"));
 }
 
 export async function updateDeliveryNote(id: number, formData: FormData) {
@@ -98,7 +99,7 @@ export async function updateDeliveryNote(id: number, formData: FormData) {
 
   revalidatePath("/delivery-notes");
   revalidatePath(`/delivery-notes/${id}`);
-  redirect(`/delivery-notes/${id}`);
+  redirect(flashUrl(`/delivery-notes/${id}` , "Delivery note updated"));
 }
 
 export async function setDeliveryNoteStatus(
@@ -120,5 +121,5 @@ export async function deleteDeliveryNote(id: number) {
   if (row) await logAudit({ documentKind: "deliveryNote", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(deliveryNotes).where(eq(deliveryNotes.id, id));
   revalidatePath("/delivery-notes");
-  redirect("/delivery-notes");
+  redirect(flashUrl(`/delivery-notes` , "Delivery note deleted"));
 }

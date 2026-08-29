@@ -6,6 +6,7 @@ import { deleteExpense } from "@/lib/actions/expenses";
 import { formatDate, formatMoney } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -70,11 +71,11 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="space-y-6">
-          <form action={remove}>
+          <ConfirmForm action={remove} confirm="Delete this expense? This can't be undone.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete expense
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

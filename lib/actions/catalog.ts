@@ -5,6 +5,7 @@ import { catalogItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 export async function createCatalogItem(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -18,7 +19,7 @@ export async function createCatalogItem(formData: FormData) {
   });
 
   revalidatePath("/catalog");
-  redirect("/catalog");
+  redirect(flashUrl(`/catalog` , "Item created"));
 }
 
 export async function updateCatalogItem(id: number, formData: FormData) {
@@ -33,7 +34,7 @@ export async function updateCatalogItem(id: number, formData: FormData) {
     .where(eq(catalogItems.id, id));
 
   revalidatePath("/catalog");
-  redirect("/catalog");
+  redirect(flashUrl(`/catalog` , "Item updated"));
 }
 
 export async function toggleCatalogItemActive(id: number, active: boolean) {
@@ -44,4 +45,5 @@ export async function toggleCatalogItemActive(id: number, active: boolean) {
 export async function deleteCatalogItem(id: number) {
   await db.delete(catalogItems).where(eq(catalogItems.id, id));
   revalidatePath("/catalog");
+  redirect(flashUrl(`/catalog`, "Item deleted"));
 }

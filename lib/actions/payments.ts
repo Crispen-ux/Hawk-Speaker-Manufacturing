@@ -3,6 +3,7 @@
 import { recordInvoicePayment } from "@/lib/actions/invoices";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 export async function recordStandalonePayment(formData: FormData) {
   const invoiceId = Number(formData.get("invoiceId"));
@@ -16,5 +17,5 @@ export async function recordStandalonePayment(formData: FormData) {
   });
 
   revalidatePath("/payments");
-  redirect("/payments");
+  redirect(flashUrl(`/payments` , "Payment recorded"));
 }

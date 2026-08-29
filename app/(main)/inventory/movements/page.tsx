@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { inventoryMovements } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import { PageHeader, LinkButton, EmptyState } from "@/components/ui";
+import ConfirmForm from "@/components/ConfirmForm";
 import { formatDate } from "@/lib/money";
 import { deleteMovement } from "@/lib/actions/inventory";
 
@@ -59,9 +60,9 @@ export default async function InventoryMovementsPage() {
                     </td>
                     <td className="px-4 py-3 text-ink-soft">{formatDate((m.createdAt as Date).toISOString())}</td>
                     <td className="px-4 py-3 text-right">
-                      <form action={remove}>
+                      <ConfirmForm action={remove} confirm="Delete this movement? Stock levels will be re-calculated.">
                         <button className="font-mono text-xs text-rust hover:underline">remove</button>
-                      </form>
+                      </ConfirmForm>
                     </td>
                   </tr>
                 );

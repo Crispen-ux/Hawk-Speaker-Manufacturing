@@ -5,6 +5,7 @@ import { assets } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 export async function createAsset(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -24,7 +25,7 @@ export async function createAsset(formData: FormData) {
     .returning({ id: assets.id });
 
   revalidatePath("/assets");
-  redirect(`/assets/${row.id}`);
+  redirect(flashUrl(`/assets/${row.id}` , "Asset created"));
 }
 
 export async function updateAsset(id: number, formData: FormData) {
@@ -42,7 +43,7 @@ export async function updateAsset(id: number, formData: FormData) {
 
   revalidatePath("/assets");
   revalidatePath(`/assets/${id}`);
-  redirect(`/assets/${id}`);
+  redirect(flashUrl(`/assets/${id}` , "Asset updated"));
 }
 
 export async function setAssetStatus(id: number, status: (typeof assets.status.enumValues)[number]) {
@@ -54,5 +55,5 @@ export async function setAssetStatus(id: number, status: (typeof assets.status.e
 export async function deleteAsset(id: number) {
   await db.delete(assets).where(eq(assets.id, id));
   revalidatePath("/assets");
-  redirect("/assets");
+  redirect(flashUrl(`/assets` , "Asset deleted"));
 }

@@ -10,6 +10,7 @@ import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import AuditTimeline from "@/components/AuditTimeline";
+import ConfirmForm from "@/components/ConfirmForm";
 import { getAuditForDocument } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -153,11 +154,11 @@ export default async function CreditNoteDetailPage({ params }: { params: Promise
             )}
           </Card>
 
-          <form action={removeCreditNote}>
+          <ConfirmForm action={removeCreditNote} confirm="Delete this credit note? This can't be undone.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete credit note
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

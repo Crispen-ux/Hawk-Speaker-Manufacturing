@@ -6,6 +6,7 @@ import Link from "next/link";
 import { updateSupplier, deleteSupplier } from "@/lib/actions/suppliers";
 import { PageHeader, Field, inputClass, PrimaryButton, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
+import ConfirmForm from "@/components/ConfirmForm";
 import { formatDate } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -49,11 +50,11 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
             </Field>
             <div className="flex items-center justify-between pt-2">
               <PrimaryButton type="submit">Save changes</PrimaryButton>
-              <form action={deleteWithId}>
+              <ConfirmForm action={deleteWithId} confirm="Delete this supplier? Their purchase orders will be gone too.">
                 <button type="submit" className="font-mono text-xs uppercase tracking-wide text-rust hover:underline">
                   Delete supplier
                 </button>
-              </form>
+              </ConfirmForm>
             </div>
           </form>
         </Card>

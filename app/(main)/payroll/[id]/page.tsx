@@ -8,6 +8,7 @@ import { formatDate, formatMoney } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card, inputClass, PrimaryButton } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -123,11 +124,11 @@ export default async function PayrollRunDetailPage({ params }: { params: Promise
           </Card>
 
           {!locked && (
-            <form action={remove}>
+            <ConfirmForm action={remove} confirm="Delete this payroll run? This can't be undone.">
               <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
                 Delete run
               </button>
-            </form>
+            </ConfirmForm>
           )}
         </div>
       </div>

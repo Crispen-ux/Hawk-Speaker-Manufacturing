@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextCreditNoteNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { flashUrl } from "@/lib/flash";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -80,7 +81,7 @@ export async function createCreditNote(formData: FormData) {
 
   revalidatePath("/credit-notes");
   revalidatePath("/invoices");
-  redirect(`/credit-notes/${row.id}`);
+  redirect(flashUrl(`/credit-notes/${row.id}` , "Credit note created"));
 }
 
 export async function updateCreditNote(id: number, formData: FormData) {
@@ -116,7 +117,7 @@ export async function updateCreditNote(id: number, formData: FormData) {
 
   revalidatePath("/credit-notes");
   revalidatePath(`/credit-notes/${id}`);
-  redirect(`/credit-notes/${id}`);
+  redirect(flashUrl(`/credit-notes/${id}` , "Credit note updated"));
 }
 
 export async function setCreditNoteStatus(
@@ -139,5 +140,5 @@ export async function deleteCreditNote(id: number) {
   await db.delete(creditNotes).where(eq(creditNotes.id, id));
   revalidatePath("/credit-notes");
   revalidatePath("/invoices");
-  redirect("/credit-notes");
+  redirect(flashUrl(`/credit-notes` , "Credit note deleted"));
 }

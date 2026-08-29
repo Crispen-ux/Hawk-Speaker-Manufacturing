@@ -5,6 +5,7 @@ import { employees } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 export async function createEmployee(formData: FormData) {
   const firstName = String(formData.get("firstName") ?? "").trim();
@@ -31,7 +32,7 @@ export async function createEmployee(formData: FormData) {
     .returning({ id: employees.id });
 
   revalidatePath("/employees");
-  redirect(`/employees/${row.id}`);
+  redirect(flashUrl(`/employees/${row.id}` , "Employee created"));
 }
 
 export async function updateEmployee(id: number, formData: FormData) {
@@ -53,7 +54,7 @@ export async function updateEmployee(id: number, formData: FormData) {
 
   revalidatePath("/employees");
   revalidatePath(`/employees/${id}`);
-  redirect(`/employees/${id}`);
+  redirect(flashUrl(`/employees/${id}` , "Employee updated"));
 }
 
 export async function setEmployeeStatus(id: number, status: (typeof employees.status.enumValues)[number]) {
@@ -65,5 +66,5 @@ export async function setEmployeeStatus(id: number, status: (typeof employees.st
 export async function deleteEmployee(id: number) {
   await db.delete(employees).where(eq(employees.id, id));
   revalidatePath("/employees");
-  redirect("/employees");
+  redirect(flashUrl(`/employees` , "Employee deleted"));
 }

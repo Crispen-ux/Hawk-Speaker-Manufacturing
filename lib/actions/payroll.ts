@@ -5,6 +5,7 @@ import { payrollRuns, payrollEntries, employees } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flashUrl } from "@/lib/flash";
 
 export async function createPayrollRun(formData: FormData) {
   const periodStart = String(formData.get("periodStart") ?? "");
@@ -34,7 +35,7 @@ export async function createPayrollRun(formData: FormData) {
   );
 
   revalidatePath("/payroll");
-  redirect(`/payroll/${run.id}`);
+  redirect(flashUrl(`/payroll/${run.id}` , "Payroll run created"));
 }
 
 export async function updatePayrollEntry(entryId: number, formData: FormData) {
@@ -52,5 +53,5 @@ export async function setPayrollStatus(id: number, status: (typeof payrollRuns.s
 export async function deletePayrollRun(id: number) {
   await db.delete(payrollRuns).where(eq(payrollRuns.id, id));
   revalidatePath("/payroll");
-  redirect("/payroll");
+  redirect(flashUrl(`/payroll` , "Payroll run deleted"));
 }

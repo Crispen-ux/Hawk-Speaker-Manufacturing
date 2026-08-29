@@ -7,6 +7,7 @@ import { deleteRecurring, generateNow, toggleRecurringActive } from "@/lib/actio
 import { calcTotals, formatDate, formatMoney, toNumber } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -130,11 +131,11 @@ export default async function RecurringDetailPage({ params }: { params: Promise<
             </form>
           </Card>
 
-          <form action={remove}>
+          <ConfirmForm action={remove} confirm="Delete this recurring invoice? No more invoices will be generated from it.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete recurring invoice
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

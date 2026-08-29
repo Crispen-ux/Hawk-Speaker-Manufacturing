@@ -15,6 +15,7 @@ import SendEmailForm from "@/components/SendEmailForm";
 import WhatsAppOpenForm from "@/components/WhatsAppOpenForm";
 import PaymentReminderForm from "@/components/PaymentReminderForm";
 import AuditTimeline from "@/components/AuditTimeline";
+import ConfirmForm from "@/components/ConfirmForm";
 import { getAuditForDocument } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -174,9 +175,9 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                           <td className="px-4 py-2 font-mono">{money(p.amount)}</td>
                           <td className="px-4 py-2 text-ink-soft">{p.method || "—"}</td>
                           <td className="px-4 py-2 text-right">
-                            <form action={removePayment}>
+                            <ConfirmForm action={removePayment} confirm="Delete this payment? This can't be undone.">
                               <button className="font-mono text-xs text-rust hover:underline">remove</button>
-                            </form>
+                            </ConfirmForm>
                           </td>
                         </tr>
                       );
@@ -275,11 +276,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             )}
           </Card>
 
-          <form action={removeInvoice}>
+          <ConfirmForm action={removeInvoice} confirm="Delete this invoice? This can't be undone. Sent copies linked to it may break.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete invoice
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

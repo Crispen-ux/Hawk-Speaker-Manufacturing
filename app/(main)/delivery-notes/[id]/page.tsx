@@ -13,6 +13,7 @@ import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
 import WhatsAppOpenForm from "@/components/WhatsAppOpenForm";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -167,11 +168,11 @@ export default async function DeliveryNoteDetailPage({ params }: { params: Promi
             {dn.client?.email && <p className="text-sm text-ink-soft">{dn.client.email}</p>}
           </Card>
 
-          <form action={removeDN}>
+          <ConfirmForm action={removeDN} confirm="Delete this delivery note? This can't be undone.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete delivery note
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

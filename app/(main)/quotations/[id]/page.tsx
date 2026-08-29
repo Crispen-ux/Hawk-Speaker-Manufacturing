@@ -13,6 +13,7 @@ import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
 import WhatsAppOpenForm from "@/components/WhatsAppOpenForm";
+import ConfirmForm from "@/components/ConfirmForm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -207,11 +208,11 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             {quotation.client?.email && <p className="text-sm text-ink-soft">{quotation.client.email}</p>}
           </Card>
 
-          <form action={removeQuotation}>
+          <ConfirmForm action={removeQuotation} confirm="Delete this quotation? This can't be undone.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete quotation
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

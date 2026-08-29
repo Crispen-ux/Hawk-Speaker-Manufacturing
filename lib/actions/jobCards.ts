@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextInvoiceNumber, nextJobCardNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { flashUrl } from "@/lib/flash";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -75,7 +76,7 @@ export async function createJobCard(formData: FormData) {
   await logAudit({ documentKind: "jobCard", documentId: row.id, documentNumber: number, action: "created" });
 
   revalidatePath("/job-cards");
-  redirect(`/job-cards/${row.id}`);
+  redirect(flashUrl(`/job-cards/${row.id}` , "Job card created"));
 }
 
 export async function updateJobCard(id: number, formData: FormData) {
@@ -113,7 +114,7 @@ export async function updateJobCard(id: number, formData: FormData) {
 
   revalidatePath("/job-cards");
   revalidatePath(`/job-cards/${id}`);
-  redirect(`/job-cards/${id}`);
+  redirect(flashUrl(`/job-cards/${id}` , "Job card updated"));
 }
 
 export async function setJobCardStatus(id: number, status: (typeof jobCards.status.enumValues)[number]) {
@@ -136,7 +137,7 @@ export async function deleteJobCard(id: number) {
   if (row) await logAudit({ documentKind: "jobCard", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(jobCards).where(eq(jobCards.id, id));
   revalidatePath("/job-cards");
-  redirect("/job-cards");
+  redirect(flashUrl(`/job-cards` , "Job card deleted"));
 }
 
 export async function convertJobCardToInvoice(id: number) {
@@ -185,5 +186,5 @@ export async function convertJobCardToInvoice(id: number) {
 
   revalidatePath("/job-cards");
   revalidatePath("/invoices");
-  redirect(`/invoices/${inv.id}`);
+  redirect(flashUrl(`/invoices/${inv.id}` , "Converted to invoice"));
 }

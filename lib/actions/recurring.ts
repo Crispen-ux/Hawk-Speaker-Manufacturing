@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { generateInvoiceFromRecurring } from "@/lib/recurring";
+import { flashUrl } from "@/lib/flash";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -69,7 +70,7 @@ export async function createRecurring(formData: FormData) {
   );
 
   revalidatePath("/recurring");
-  redirect(`/recurring/${row.id}`);
+  redirect(flashUrl(`/recurring/${row.id}` , "Recurring profile created"));
 }
 
 export async function updateRecurring(id: number, formData: FormData) {
@@ -107,7 +108,7 @@ export async function updateRecurring(id: number, formData: FormData) {
 
   revalidatePath("/recurring");
   revalidatePath(`/recurring/${id}`);
-  redirect(`/recurring/${id}`);
+  redirect(flashUrl(`/recurring/${id}` , "Recurring profile updated"));
 }
 
 export async function toggleRecurringActive(id: number, active: boolean) {
@@ -119,7 +120,7 @@ export async function toggleRecurringActive(id: number, active: boolean) {
 export async function deleteRecurring(id: number) {
   await db.delete(recurringInvoices).where(eq(recurringInvoices.id, id));
   revalidatePath("/recurring");
-  redirect("/recurring");
+  redirect(flashUrl(`/recurring` , "Recurring profile deleted"));
 }
 
 export async function generateNow(id: number) {
@@ -127,5 +128,5 @@ export async function generateNow(id: number) {
   revalidatePath("/recurring");
   revalidatePath(`/recurring/${id}`);
   revalidatePath("/invoices");
-  redirect(`/invoices/${invoiceId}`);
+  redirect(flashUrl(`/invoices/${invoiceId}` , "Invoice generated from recurring profile"));
 }

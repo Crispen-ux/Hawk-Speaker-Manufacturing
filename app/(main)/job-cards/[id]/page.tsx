@@ -13,6 +13,7 @@ import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
 import WhatsAppOpenForm from "@/components/WhatsAppOpenForm";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -212,11 +213,11 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
             {job.client?.email && <p className="text-sm text-ink-soft">{job.client.email}</p>}
           </Card>
 
-          <form action={removeJob}>
+          <ConfirmForm action={removeJob} confirm="Delete this job card? This can't be undone.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete job card
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

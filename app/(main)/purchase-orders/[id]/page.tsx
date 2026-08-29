@@ -9,6 +9,7 @@ import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -144,11 +145,11 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
             )}
           </Card>
 
-          <form action={removePO}>
+          <ConfirmForm action={removePO} confirm="Delete this purchase order? This can't be undone.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">
               Delete purchase order
             </button>
-          </form>
+          </ConfirmForm>
         </div>
       </div>
     </div>

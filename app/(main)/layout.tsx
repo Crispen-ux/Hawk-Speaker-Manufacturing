@@ -1,4 +1,5 @@
 import Sidebar from "@/components/Sidebar";
+import { ToastProvider } from "@/components/ToastProvider";
 import ModuleGate from "@/components/ModuleGate";
 import { getEnabledModules } from "@/lib/enabled-modules";
 import { getSettings } from "@/lib/numbering";
@@ -20,7 +21,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       />
       <main className="min-w-0 flex-1 bg-paper">
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
-          <ModuleGate disabledKeys={disabledKeys}>{children}</ModuleGate>
+          <ModuleGate disabledKeys={disabledKeys}>
+            <ToastProvider>{children}</ToastProvider>
+          </ModuleGate>
         </div>
       </main>
     </div>

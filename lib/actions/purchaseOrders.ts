@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextPurchaseOrderNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { flashUrl } from "@/lib/flash";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -58,7 +59,7 @@ export async function createPurchaseOrder(formData: FormData) {
   await logAudit({ documentKind: "purchaseOrder", documentId: row.id, documentNumber: number, action: "created" });
 
   revalidatePath("/purchase-orders");
-  redirect(`/purchase-orders/${row.id}`);
+  redirect(flashUrl(`/purchase-orders/${row.id}` , "Purchase order created"));
 }
 
 export async function updatePurchaseOrder(id: number, formData: FormData) {
@@ -92,7 +93,7 @@ export async function updatePurchaseOrder(id: number, formData: FormData) {
 
   revalidatePath("/purchase-orders");
   revalidatePath(`/purchase-orders/${id}`);
-  redirect(`/purchase-orders/${id}`);
+  redirect(flashUrl(`/purchase-orders/${id}` , "Purchase order updated"));
 }
 
 export async function setPurchaseOrderStatus(
@@ -114,5 +115,5 @@ export async function deletePurchaseOrder(id: number) {
   if (row) await logAudit({ documentKind: "purchaseOrder", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
   revalidatePath("/purchase-orders");
-  redirect("/purchase-orders");
+  redirect(flashUrl(`/purchase-orders` , "Purchase order deleted"));
 }
