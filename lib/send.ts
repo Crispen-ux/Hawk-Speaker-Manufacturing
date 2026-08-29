@@ -12,6 +12,7 @@ import {
   type EmailCompany,
 } from "@/lib/email-templates";
 import { getWhatsAppTemplates } from "@/lib/communications/templates";
+import { publicDocumentUrl } from "@/lib/public-links";
 import { getBaseUrl } from "@/lib/base-url";
 import {
   dispatch,
@@ -44,12 +45,6 @@ function companyForEmail(settings: {
     vatNumber: settings.vatNumber,
     logoUrl: settings.logoData && baseUrl ? `${baseUrl}/api/settings/logo` : null,
   };
-}
-
-function docLink(segment: string, id?: number): string {
-  const baseUrl = getBaseUrl();
-  if (!baseUrl) return "";
-  return id ? `${baseUrl}/${segment}/${id}` : `${baseUrl}/${segment}`;
 }
 
 function money(settings: Settings) {
@@ -124,7 +119,7 @@ async function buildInvoiceDelivery(
     dueDate: formatDate(invoice.dueDate),
     clientName: invoice.client?.name ?? "",
   };
-  const link = docLink("invoices", invoice.id);
+  const link = await publicDocumentUrl({ kind: "invoice", documentId: invoiceId });
 
   const html = buildDocumentEmail({
     kicker: "Invoice",
@@ -277,7 +272,7 @@ async function buildQuotationDelivery(
     validUntil: formatDate(quotation.expiryDate),
     clientName: quotation.client?.name ?? "",
   };
-  const link = docLink("quotations", quotation.id);
+  const link = await publicDocumentUrl({ kind: "quotation", documentId: quotationId });
 
   const html = buildDocumentEmail({
     kicker: "Quotation",
@@ -383,7 +378,7 @@ async function buildStatementDelivery(
     invoiceCount: String(statementRows.length),
     outstanding: fmt(outstanding),
   };
-  const link = docLink("statements");
+  const link = await publicDocumentUrl({ kind: "statement", clientId: client.id, fromDate, toDate });
 
   const html = buildDocumentEmail({
     kicker: "Statement of account",
@@ -657,7 +652,7 @@ async function buildDeliveryNoteDelivery(
     deliveryDate: formatDate(dn.deliveryDate),
     itemCount: String(dn.items.length),
   };
-  const link = docLink("delivery-notes", dn.id);
+  const link = await publicDocumentUrl({ kind: "deliveryNote", documentId: dnId });
 
   const html = buildDocumentEmail({
     kicker: "Delivery note",

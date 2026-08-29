@@ -2,14 +2,14 @@ import { dispatch } from "./index";
 import { getSettings } from "@/lib/numbering";
 import { getWhatsAppTemplates } from "./templates";
 import { renderTemplate } from "@/lib/email-templates";
-import { getBaseUrl } from "@/lib/base-url";
+import { publicDocumentUrl } from "@/lib/public-links";
+import type { SharedLinkKind, PersistedLinkKind } from "@/lib/public-links";
 import type { SendSummary } from "./types";
 
-const DOC_LINK_PATHS: Record<string, string> = {
-  invoice: "invoices",
-  quotation: "quotations",
-  statement: "statements",
-  deliveryNote: "delivery-notes",
+const LINK_KINDS: Record<string, PersistedLinkKind> = {
+  invoice: "invoice",
+  quotation: "quotation",
+  deliveryNote: "deliveryNote",
 };
 
 /**
@@ -18,7 +18,7 @@ const DOC_LINK_PATHS: Record<string, string> = {
  * returns gracefully — a skipped/failed message never throws.
  */
 export async function sendDocumentLinkByWhatsApp(data: {
-  documentType: keyof typeof DOC_LINK_PATHS | "other";
+  documentType: keyof typeof LINK_KINDS | SharedLinkKind | "other";
   documentNumber: string;
   documentId?: number;
   recipientName?: string | null;
@@ -26,10 +26,14 @@ export async function sendDocumentLinkByWhatsApp(data: {
 }): Promise<SendSummary> {
   const settings = await getSettings();
   const templates = getWhatsAppTemplates(settings);
-  const baseUrl = getBaseUrl();
-  const segment = DOC_LINK_PATHS[data.documentType];
-  const idSuffix = data.documentId ? `/${data.documentId}` : "";
-  const link = baseUrl && segment ? `${baseUrl}/${segment}${idSuffix}` : "";
+
+  let link = "";
+  if (data.documentId && data.documentType in LINK_KINDS) {
+    link = await publicDocumentUrl({
+      kind: LINK_KINDS[data.documentType],
+      documentId: data.documentId,
+    });
+  }
 
   const text = renderTemplate(templates.documentLink, {
     companyName: settings.companyName,

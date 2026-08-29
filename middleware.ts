@@ -12,6 +12,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/api/settings/public") ||
     pathname.startsWith("/api/settings/logo") ||
     pathname.startsWith("/api/cron") ||
+    pathname.startsWith("/shared") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon")
   ) {

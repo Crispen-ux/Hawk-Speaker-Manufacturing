@@ -392,3 +392,23 @@ export const modules = pgTable("modules", {
   key: varchar("key", { length: 64 }).primaryKey(),
   enabled: boolean("enabled").default(true).notNull(),
 });
+
+// ---------- Public document links ----------
+// One row per document that has been shared via a public link (used by
+// WhatsApp sends). `token` is a random, unguessable id that grants read
+// access to a rendered PDF — never the document's numeric id, so documents
+// can't be enumerated by guessing.
+//
+// Generated documents (statements) have no row of their own, so their
+// generation parameters are stored here instead of `documentId`.
+
+export const documentLinks = pgTable("document_links", {
+  id: serial("id").primaryKey(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  documentId: integer("document_id"),
+  clientId: integer("client_id"),
+  fromDate: date("from_date"),
+  toDate: date("to_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
