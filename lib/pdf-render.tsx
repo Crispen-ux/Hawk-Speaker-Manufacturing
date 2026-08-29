@@ -1,9 +1,14 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import DocPDF, { DocPDFProps } from "@/components/pdf/DocPDF";
 import StatementPDF, { StatementRow } from "@/components/pdf/StatementPDF";
+import PayslipPDF, { PayslipPDFProps } from "@/components/pdf/PayslipPDF";
 
 export async function renderDocPDFBuffer(props: DocPDFProps) {
   return renderToBuffer(<DocPDF {...props} />);
+}
+
+export async function renderPayslipPDFBuffer(props: PayslipPDFProps) {
+  return renderToBuffer(<PayslipPDF {...props} />);
 }
 
 export async function renderStatementPDFBuffer(props: {

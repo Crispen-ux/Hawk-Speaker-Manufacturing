@@ -1,9 +1,20 @@
 import { db } from "@/db";
-import { invoices, quotations, clients, deliveryNotes, jobCards, creditNotes, receipts, expenses, suppliers } from "@/db/schema";
+import {
+  invoices,
+  quotations,
+  clients,
+  deliveryNotes,
+  jobCards,
+  creditNotes,
+  receipts,
+  expenses,
+  suppliers,
+  payrollEntries,
+} from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
 import { companyFromSettings } from "@/lib/company";
-import { renderDocPDFBuffer, renderStatementPDFBuffer } from "@/lib/pdf-render";
+import { renderDocPDFBuffer, renderStatementPDFBuffer, renderPayslipPDFBuffer } from "@/lib/pdf-render";
 import { calcTotals, toNumber } from "@/lib/money";
 
 export type SharedPDF = { buffer: Buffer; filename: string; title: string };
@@ -301,5 +312,48 @@ export async function renderStatementPdf(
     buffer: Buffer.from(buffer),
     filename: `statement-${clientName}.pdf`,
     title: `Statement for ${client.name}`,
+  };
+}
+
+/** Renders one employee's pay slip for a payroll run. */
+export async function renderPayslipPdf(entryId: number): Promise<SharedPDF> {
+  const entry = await db.query.payrollEntries.findFirst({
+    where: eq(payrollEntries.id, entryId),
+    with: { run: true, employee: true },
+  });
+  if (!entry) notFound();
+
+  const settings = await getSettings();
+  const gross = toNumber(entry.salary) + toNumber(entry.additions);
+  const totalDeductions = toNumber(entry.tax) + toNumber(entry.uif) + toNumber(entry.otherDeductions);
+  const net = gross - totalDeductions;
+
+  const buffer = await renderPayslipPDFBuffer({
+    employee: {
+      name: `${entry.employee.firstName} ${entry.employee.lastName}`,
+      position: entry.employee.position,
+      department: entry.employee.department,
+      idNumber: entry.employee.idNumber,
+    },
+    periodStart: entry.run.periodStart,
+    periodEnd: entry.run.periodEnd,
+    payDate: entry.run.payDate,
+    runId: entry.run.id,
+    salary: entry.salary,
+    additions: entry.additions,
+    tax: entry.tax,
+    uif: entry.uif,
+    otherDeductions: entry.otherDeductions,
+    net,
+    status: entry.run.status,
+    notes: entry.notes ?? entry.run.notes,
+    company: companyFromSettings(settings),
+  });
+
+  const name = `${entry.employee.firstName} ${entry.employee.lastName}`.replace(/\s+/g, "-");
+  return {
+    buffer: Buffer.from(buffer),
+    filename: `payslip-${name}-${entry.run.periodEnd}.pdf`,
+    title: `Pay slip for ${entry.employee.firstName} ${entry.employee.lastName}`,
   };
 }

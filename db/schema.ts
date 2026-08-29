@@ -647,6 +647,10 @@ export const payrollEntries = pgTable("payroll_entries", {
     .references(() => employees.id, { onDelete: "cascade" })
     .notNull(),
   salary: varchar("salary", { length: 64 }).default("0").notNull(),
+  additions: varchar("additions", { length: 64 }).default("0").notNull(),
+  tax: varchar("tax", { length: 64 }).default("0").notNull(),
+  uif: varchar("uif", { length: 64 }).default("0").notNull(),
+  otherDeductions: varchar("other_deductions", { length: 64 }).default("0").notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

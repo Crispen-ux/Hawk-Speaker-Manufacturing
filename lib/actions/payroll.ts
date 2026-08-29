@@ -38,10 +38,29 @@ export async function createPayrollRun(formData: FormData) {
   redirect(flashUrl(`/payroll/${run.id}` , "Payroll run created"));
 }
 
+function moneyField(v: FormDataEntryValue | null, label: string): string {
+  const s = String(v ?? "0").trim() || "0";
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0) throw new Error(`${label} must be a positive number`);
+  return s;
+}
+
 export async function updatePayrollEntry(entryId: number, formData: FormData) {
-  const salary = String(formData.get("salary") ?? "0");
-  await db.update(payrollEntries).set({ salary }).where(eq(payrollEntries.id, entryId));
+  const salary = moneyField(formData.get("salary"), "Salary");
+  const additions = moneyField(formData.get("additions"), "Additions");
+  const tax = moneyField(formData.get("tax"), "PAYE");
+  const uif = moneyField(formData.get("uif"), "UIF");
+  const otherDeductions = moneyField(formData.get("other"), "Other deductions");
+  const [entry] = await db
+    .select({ runId: payrollEntries.runId })
+    .from(payrollEntries)
+    .where(eq(payrollEntries.id, entryId));
+  await db
+    .update(payrollEntries)
+    .set({ salary, additions, tax, uif, otherDeductions })
+    .where(eq(payrollEntries.id, entryId));
   revalidatePath("/payroll");
+  if (entry) revalidatePath(`/payroll/${entry.runId}`);
 }
 
 export async function setPayrollStatus(id: number, status: (typeof payrollRuns.status.enumValues)[number]) {

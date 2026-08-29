@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { payrollRuns, payrollEntries } from "@/db/schema";
 import { deletePayrollRun, setPayrollStatus, updatePayrollEntry } from "@/lib/actions/payroll";
-import { formatDate, formatMoney } from "@/lib/money";
+import { formatDate, formatMoney, toNumber } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card, inputClass, PrimaryButton } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
@@ -68,35 +68,67 @@ export default async function PayrollRunDetailPage({ params }: { params: Promise
           </Card>
 
           <h2 className="mb-3 mt-8 font-display text-lg font-bold text-navy">Payroll entries ({run.entries.length})</h2>
-          <div className="overflow-hidden rounded-lg border border-rule">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border border-rule">
+            <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
                   <th className="px-4 py-2.5 font-medium">Employee</th>
-                  <th className="px-4 py-2.5 font-medium">Position</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Salary for this run</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Salary</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Additions</th>
+                  <th className="px-4 py-2.5 text-right font-medium">PAYE</th>
+                  <th className="px-4 py-2.5 text-right font-medium">UIF</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Other</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Net</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Pay slip</th>
                 </tr>
               </thead>
               <tbody>
                 {run.entries.map((e) => {
+                  const gross = toNumber(e.salary) + toNumber(e.additions);
+                  const deductions = toNumber(e.tax) + toNumber(e.uif) + toNumber(e.otherDeductions);
+                  const net = gross - deductions;
+                  const field = `${inputClass} w-24 py-1 text-right font-mono`;
+                  if (locked) {
+                    return (
+                      <tr key={e.id} className="border-b border-rule last:border-b-0 hover:bg-paper-dim/60">
+                        <td className="px-4 py-3">
+                          <Link href={`/employees/${e.employeeId}`} className="font-medium text-ink hover:text-forest">
+                            {e.employee.firstName} {e.employee.lastName}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono">{money(e.salary)}</td>
+                        <td className="px-4 py-3 text-right font-mono text-ink-soft">{money(e.additions)}</td>
+                        <td className="px-4 py-3 text-right font-mono">{money(e.tax)}</td>
+                        <td className="px-4 py-3 text-right font-mono">{money(e.uif)}</td>
+                        <td className="px-4 py-3 text-right font-mono text-ink-soft">{money(e.otherDeductions)}</td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold text-success">{money(net)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <a href={`/api/payroll/payslip/${e.id}`} target="_blank" className="font-mono text-xs text-forest hover:underline">PDF</a>
+                        </td>
+                      </tr>
+                    );
+                  }
                   const save = updatePayrollEntry.bind(null, e.id);
+                  const rowForm = `pay-entry-${e.id}`;
                   return (
                     <tr key={e.id} className="border-b border-rule last:border-b-0 hover:bg-paper-dim/60">
                       <td className="px-4 py-3">
+                        <form id={rowForm} action={save} className="hidden" aria-hidden="true" />
                         <Link href={`/employees/${e.employeeId}`} className="font-medium text-ink hover:text-forest">
                           {e.employee.firstName} {e.employee.lastName}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-ink-soft">{e.employee.position || "—"}</td>
-                      <td className="px-4 py-3 text-right">
-                        {locked ? (
-                          <span className="font-mono">{money(e.salary)}</span>
-                        ) : (
-                          <form action={save} className="inline-flex items-center gap-2">
-                            <input name="salary" defaultValue={e.salary} className={`${inputClass} w-32 py-1 text-right font-mono`} inputMode="decimal" />
-                            <button className="font-mono text-xs text-forest hover:underline">save</button>
-                          </form>
-                        )}
+                      <td className="px-2 py-3 text-right"><input name="salary" form={rowForm} defaultValue={e.salary} className={field} inputMode="decimal" /></td>
+                      <td className="px-2 py-3 text-right"><input name="additions" form={rowForm} defaultValue={e.additions} className={field} inputMode="decimal" /></td>
+                      <td className="px-2 py-3 text-right"><input name="tax" form={rowForm} defaultValue={e.tax} className={field} inputMode="decimal" /></td>
+                      <td className="px-2 py-3 text-right"><input name="uif" form={rowForm} defaultValue={e.uif} className={field} inputMode="decimal" /></td>
+                      <td className="px-2 py-3 text-right"><input name="other" form={rowForm} defaultValue={e.otherDeductions} className={field} inputMode="decimal" /></td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold">{money(net)}</td>
+                      <td className="px-2 py-3 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <button form={rowForm} type="submit" className="font-mono text-xs text-forest hover:underline">save</button>
+                          <a href={`/api/payroll/payslip/${e.id}`} target="_blank" className="font-mono text-xs text-forest hover:underline">PDF</a>
+                        </div>
                       </td>
                     </tr>
                   );

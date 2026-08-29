@@ -1,9 +1,9 @@
 import { db } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { employees } from "@/db/schema";
+import { employees, payrollEntries, payrollRuns } from "@/db/schema";
 import { deleteEmployee, setEmployeeStatus } from "@/lib/actions/employees";
-import { formatDate, formatMoney } from "@/lib/money";
+import { formatDate, formatMoney, toNumber } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
@@ -21,6 +21,21 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   if (!employee) notFound();
   const remove = deleteEmployee.bind(null, employeeId);
   const setStatus = setEmployeeStatus.bind(null, employeeId);
+
+  const entries = await db
+    .select()
+    .from(payrollEntries)
+    .where(eq(payrollEntries.employeeId, employeeId))
+    .orderBy(desc(payrollEntries.id))
+    .limit(12);
+  const runIds = [...new Set(entries.map((e) => e.runId))];
+  const runs = runIds.length
+    ? await db.select().from(payrollRuns).where(inArray(payrollRuns.id, runIds))
+    : [];
+  const runByEntry = new Map(entries.map((e) => [e.id, runs.find((r) => r.id === e.runId)]));
+  const slips = entries
+    .filter((e) => runByEntry.get(e.id))
+    .sort((a, b) => (runByEntry.get(b.id)!.payDate < runByEntry.get(a.id)!.payDate ? -1 : 1));
 
   return (
     <div>
@@ -72,6 +87,42 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
               <div className="mt-4 text-sm text-ink-soft">{employee.notes}</div>
             )}
           </Card>
+
+          <h2 className="mb-3 mt-8 font-display text-lg font-bold text-navy">Payslips ({slips.length})</h2>
+          {slips.length === 0 ? (
+            <p className="text-sm text-ink-soft">No pay slips yet — they appear once the employee is included in a payroll run.</p>
+          ) : (
+            <Card className="divide-y divide-rule">
+              {slips.map((e) => {
+                const run = runByEntry.get(e.id)!;
+                const net =
+                  toNumber(e.salary) +
+                  toNumber(e.additions) -
+                  toNumber(e.tax) -
+                  toNumber(e.uif) -
+                  toNumber(e.otherDeductions);
+                return (
+                  <div key={e.id} className="flex items-center justify-between gap-4 py-3">
+                    <div>
+                      <div className="font-mono text-xs text-ink-soft">
+                        {formatDate(run.payDate)} · {formatDate(run.periodStart)} → {formatDate(run.periodEnd)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <StatusStamp status={run.status} />
+                        <a href={`/api/payroll/payslip/${e.id}`} target="_blank" className="font-mono text-xs text-forest hover:underline">
+                          download PDF
+                        </a>
+                        <a href={`/payroll/${run.id}`} className="font-mono text-xs text-ink-soft hover:text-forest hover:underline">
+                          run #{run.id}
+                        </a>
+                      </div>
+                    </div>
+                    <div className="text-right font-mono font-semibold">{money(net)}</div>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
         </div>
 
         <div className="space-y-6">
