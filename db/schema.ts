@@ -580,6 +580,7 @@ export const leaveRequestsRelations = relations(leaveRequests, ({ one }) => ({
 export const employeesRelations = relations(employees, ({ many }) => ({
   contracts: many(contracts),
   leaveRequests: many(leaveRequests),
+  payrollEntries: many(payrollEntries),
 }));
 
 // ---------- Inventory movements ----------
@@ -620,6 +621,44 @@ export const notifications = pgTable("notifications", {
   read: boolean("read").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ---------- Payroll ----------
+// A run covers a pay period; entries snapshot each employee's salary at run
+// time so later salary edits don't rewrite history.
+
+export const payrollStatusEnum = pgEnum("payroll_status", ["draft", "paid"]);
+
+export const payrollRuns = pgTable("payroll_runs", {
+  id: serial("id").primaryKey(),
+  periodStart: date("period_start").notNull(),
+  periodEnd: date("period_end").notNull(),
+  payDate: date("pay_date").notNull(),
+  status: payrollStatusEnum("status").default("draft").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const payrollEntries = pgTable("payroll_entries", {
+  id: serial("id").primaryKey(),
+  runId: integer("run_id")
+    .references(() => payrollRuns.id, { onDelete: "cascade" })
+    .notNull(),
+  employeeId: integer("employee_id")
+    .references(() => employees.id, { onDelete: "cascade" })
+    .notNull(),
+  salary: varchar("salary", { length: 64 }).default("0").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const payrollRunsRelations = relations(payrollRuns, ({ many }) => ({
+  entries: many(payrollEntries),
+}));
+
+export const payrollEntriesRelations = relations(payrollEntries, ({ one }) => ({
+  run: one(payrollRuns, { fields: [payrollEntries.runId], references: [payrollRuns.id] }),
+  employee: one(employees, { fields: [payrollEntries.employeeId], references: [employees.id] }),
+}));
 
 // ---------- Document depot uploads ----------
 // Files physically stored in the depot (base64 in the row). Generated PDFs

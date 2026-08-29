@@ -30,6 +30,7 @@ import {
   Layers,
   Bell,
   Banknote,
+  Coins,
 } from "lucide-react";
 
 const links = [
@@ -51,6 +52,7 @@ const links = [
   { href: "/employees", label: "Employees", icon: Briefcase, module: "employees" },
   { href: "/expenses", label: "Expenses", icon: Wallet, module: "expenses" },
   { href: "/hr", label: "HR", icon: CalendarDays, module: "hr" },
+  { href: "/payroll", label: "Payroll", icon: Coins, module: "payroll" },
   { href: "/catalog", label: "Catalogue", icon: Package, module: "catalog" },
   { href: "/inventory", label: "Inventory", icon: Layers, module: "inventory" },
   { href: "/notifications", label: "Notifications", icon: Bell, module: "notifications" },

@@ -141,7 +141,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "payroll",
     label: "Payroll",
     description: "Salaries, wages and payment runs.",
-    built: false,
+    href: "/payroll",
+    routePrefix: "/payroll",
+    built: true,
   },
   {
     key: "hr",
