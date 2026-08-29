@@ -4,7 +4,6 @@ import { eq, and, gte, lte } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
 import { companyFromSettings } from "@/lib/company";
 import { renderDocPDFBuffer, renderStatementPDFBuffer } from "@/lib/pdf-render";
-import { sendEmail } from "@/lib/email";
 import { calcTotals, formatMoney, formatDate, toNumber } from "@/lib/money";
 import {
   buildDocumentEmail,
@@ -12,7 +11,17 @@ import {
   renderTemplate,
   type EmailCompany,
 } from "@/lib/email-templates";
+import { getWhatsAppTemplates } from "@/lib/communications/templates";
 import { getBaseUrl } from "@/lib/base-url";
+import {
+  dispatch,
+  type ChannelName,
+  type CommunicationMessage,
+  type SendSummary,
+} from "@/lib/communications";
+
+type Settings = Awaited<ReturnType<typeof getSettings>>;
+type Recipients = { email?: string | null; phone?: string | null };
 
 function companyForEmail(settings: {
   companyName: string;
@@ -37,7 +46,43 @@ function companyForEmail(settings: {
   };
 }
 
-export async function sendInvoiceByEmail(invoiceId: number, to: string, message?: string) {
+function docLink(segment: string, id?: number): string {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl) return "";
+  return id ? `${baseUrl}/${segment}/${id}` : `${baseUrl}/${segment}`;
+}
+
+function money(settings: Settings) {
+  return (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
+}
+
+function emailResult(summary: SendSummary) {
+  return summary.results.find((r) => r.channel === "email");
+}
+
+/** Primary-channel guard: email sends that failed are surfaced to the caller. */
+function assertEmailDelivered(summary: SendSummary) {
+  const r = emailResult(summary);
+  if (!r?.delivered) {
+    throw new Error(r?.message ?? r?.error ?? "Email was not sent.");
+  }
+}
+
+async function deliverEmailOrThrow(message: CommunicationMessage): Promise<SendSummary> {
+  const summary = await dispatch(message, { channels: ["email"] });
+  assertEmailDelivered(summary);
+  return summary;
+}
+
+/* ------------------------------------------------------------------ */
+/* Invoice                                                             */
+/* ------------------------------------------------------------------ */
+
+async function buildInvoiceDelivery(
+  invoiceId: number,
+  recipients: Recipients = {},
+  extraMessage?: string
+) {
   const invoice = await db.query.invoices.findFirst({
     where: eq(invoices.id, invoiceId),
     with: { client: true, items: true, payments: true },
@@ -45,11 +90,12 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
   if (!invoice) throw new Error("Invoice not found");
 
   const settings = await getSettings();
+  const fmt = money(settings);
   const paid = invoice.payments.reduce((s, p) => s + toNumber(p.amount), 0);
   const { total } = calcTotals(invoice.items, invoice.taxRate, invoice.discount);
   const balance = Math.max(total - paid, 0);
-  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
-  const templates = getEmailTemplates(settings);
+  const emailTemplates = getEmailTemplates(settings);
+  const waTemplates = getWhatsAppTemplates(settings);
 
   const buffer = await renderDocPDFBuffer({
     kind: "Invoice",
@@ -71,44 +117,128 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
     company: companyFromSettings(settings),
   });
 
-  const emailVars = {
+  const vars = {
     companyName: settings.companyName,
     number: invoice.number,
-    total: money(total),
+    total: fmt(total),
     dueDate: formatDate(invoice.dueDate),
     clientName: invoice.client?.name ?? "",
   };
+  const link = docLink("invoices", invoice.id);
 
   const html = buildDocumentEmail({
     kicker: "Invoice",
     heading: `Invoice ${invoice.number}`,
-    greeting: renderTemplate(templates.invoice.greeting, emailVars),
-    message,
+    greeting: renderTemplate(emailTemplates.invoice.greeting, vars),
+    message: extraMessage,
     recipientName: invoice.client?.name,
     detailRows: [
       { label: "Invoice number", value: invoice.number },
       { label: "Issue date", value: formatDate(invoice.issueDate) },
       { label: "Due date", value: formatDate(invoice.dueDate) },
     ],
-    highlight: { label: paid > 0 ? "Balance due" : "Amount due", value: money(balance) },
+    highlight: { label: paid > 0 ? "Balance due" : "Amount due", value: fmt(balance) },
     attachmentLabel: `${invoice.number}.pdf`,
     company: companyForEmail(settings),
   });
 
-  await sendEmail({
-    to,
-    subject: renderTemplate(templates.invoice.subject, emailVars),
+  const message: CommunicationMessage = {
+    type: "invoice",
+    toEmail: recipients.email ?? undefined,
+    toPhone: recipients.phone ?? undefined,
+    subject: renderTemplate(emailTemplates.invoice.subject, vars),
     html,
-    attachments: [{ filename: `${invoice.number}.pdf`, content: buffer.toString("base64") }],
-  });
+    text: renderTemplate(waTemplates.invoice, { ...vars, link }),
+    link: link || undefined,
+    attachment: { filename: `${invoice.number}.pdf`, contentBase64: buffer.toString("base64") },
+    tokens: vars,
+  };
 
-  await db
-    .update(invoices)
-    .set({ lastSentAt: new Date(), status: invoice.status === "draft" ? "sent" : invoice.status })
-    .where(eq(invoices.id, invoiceId));
+  return { message, settings, status: invoice.status, fmt, paid, total, balance, vars, link };
 }
 
-export async function sendQuotationByEmail(quotationId: number, to: string, message?: string) {
+export async function sendInvoiceByEmail(invoiceId: number, to: string, message?: string) {
+  const built = await buildInvoiceDelivery(invoiceId, { email: to }, message);
+  const summary = await deliverEmailOrThrow(built.message);
+  await db
+    .update(invoices)
+    .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
+    .where(eq(invoices.id, invoiceId));
+  return summary;
+}
+
+/**
+ * WhatsApp is an optional channel: failures are folded into the returned
+ * summary and never thrown, so an invoice that's already saved can never be
+ * rolled back by a message that couldn't be delivered.
+ */
+export async function sendInvoiceByWhatsApp(invoiceId: number, toPhone?: string) {
+  const built = await buildInvoiceDelivery(invoiceId, { phone: toPhone });
+  const summary = await dispatch(built.message, { channels: ["whatsapp"] });
+  if (summary.results.some((r) => r.channel === "whatsapp" && r.delivered)) {
+    await db
+      .update(invoices)
+      .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
+      .where(eq(invoices.id, invoiceId));
+  }
+  return summary;
+}
+
+export async function sendPaymentReminder(
+  invoiceId: number,
+  recipients: Recipients = {},
+  extraMessage?: string
+) {
+  const built = await buildInvoiceDelivery(invoiceId, recipients, extraMessage);
+  const emailTemplates = getEmailTemplates(built.settings);
+  const waTemplates = getWhatsAppTemplates(built.settings);
+  const vars = {
+    ...built.vars,
+    outstanding: built.fmt(built.balance),
+  };
+  const link = built.link;
+  const subject = renderTemplate(emailTemplates.paymentReminder.subject, vars);
+  const html = buildDocumentEmail({
+    kicker: "Payment reminder",
+    heading: `Invoice ${built.vars.number} — payment reminder`,
+    greeting: renderTemplate(emailTemplates.paymentReminder.greeting, vars),
+    message: extraMessage,
+    recipientName: built.vars.clientName,
+    detailRows: [
+      { label: "Invoice number", value: built.vars.number },
+      { label: "Due date", value: built.vars.dueDate },
+    ],
+    highlight: { label: "Amount outstanding", value: vars.outstanding },
+    attachmentLabel: `${built.vars.number}.pdf`,
+    company: companyForEmail(built.settings),
+  });
+
+  const message: CommunicationMessage = {
+    ...built.message,
+    type: "paymentReminder",
+    subject,
+    html,
+    text: renderTemplate(waTemplates.paymentReminder, { ...vars, link }),
+  };
+
+  const channels: ChannelName[] = [];
+  if (recipients.email) channels.push("email");
+  if (recipients.phone) channels.push("whatsapp");
+
+  const summary = await dispatch(message, { channels });
+  if (recipients.email) assertEmailDelivered(summary);
+  return summary;
+}
+
+/* ------------------------------------------------------------------ */
+/* Quotation                                                           */
+/* ------------------------------------------------------------------ */
+
+async function buildQuotationDelivery(
+  quotationId: number,
+  recipients: Recipients = {},
+  extraMessage?: string
+) {
   const quotation = await db.query.quotations.findFirst({
     where: eq(quotations.id, quotationId),
     with: { client: true, items: true },
@@ -116,9 +246,10 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
   if (!quotation) throw new Error("Quotation not found");
 
   const settings = await getSettings();
+  const fmt = money(settings);
   const { total } = calcTotals(quotation.items, quotation.taxRate, quotation.discount);
-  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
-  const templates = getEmailTemplates(settings);
+  const emailTemplates = getEmailTemplates(settings);
+  const waTemplates = getWhatsAppTemplates(settings);
 
   const buffer = await renderDocPDFBuffer({
     kind: "Quotation",
@@ -139,56 +270,87 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
     company: companyFromSettings(settings),
   });
 
-  const emailVars = {
+  const vars = {
     companyName: settings.companyName,
     number: quotation.number,
-    total: money(total),
+    total: fmt(total),
     validUntil: formatDate(quotation.expiryDate),
     clientName: quotation.client?.name ?? "",
   };
+  const link = docLink("quotations", quotation.id);
 
   const html = buildDocumentEmail({
     kicker: "Quotation",
     heading: `Quotation ${quotation.number}`,
-    greeting: renderTemplate(templates.quotation.greeting, emailVars),
-    message,
+    greeting: renderTemplate(emailTemplates.quotation.greeting, vars),
+    message: extraMessage,
     recipientName: quotation.client?.name,
     detailRows: [
       { label: "Quotation number", value: quotation.number },
       { label: "Issue date", value: formatDate(quotation.issueDate) },
       { label: "Valid until", value: formatDate(quotation.expiryDate) },
     ],
-    highlight: { label: "Total", value: money(total) },
+    highlight: { label: "Total", value: vars.total },
     attachmentLabel: `${quotation.number}.pdf`,
     company: companyForEmail(settings),
   });
 
-  await sendEmail({
-    to,
-    subject: renderTemplate(templates.quotation.subject, emailVars),
+  const message: CommunicationMessage = {
+    type: "quotation",
+    toEmail: recipients.email ?? undefined,
+    toPhone: recipients.phone ?? undefined,
+    subject: renderTemplate(emailTemplates.quotation.subject, vars),
     html,
-    attachments: [{ filename: `${quotation.number}.pdf`, content: buffer.toString("base64") }],
-  });
+    text: renderTemplate(waTemplates.quotation, { ...vars, link }),
+    link: link || undefined,
+    attachment: { filename: `${quotation.number}.pdf`, contentBase64: buffer.toString("base64") },
+    tokens: vars,
+  };
 
-  await db
-    .update(quotations)
-    .set({ lastSentAt: new Date(), status: quotation.status === "draft" ? "sent" : quotation.status })
-    .where(eq(quotations.id, quotationId));
+  return { message, status: quotation.status };
 }
 
-export async function sendStatementByEmail(
+export async function sendQuotationByEmail(quotationId: number, to: string, message?: string) {
+  const built = await buildQuotationDelivery(quotationId, { email: to }, message);
+  const summary = await deliverEmailOrThrow(built.message);
+  await db
+    .update(quotations)
+    .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
+    .where(eq(quotations.id, quotationId));
+  return summary;
+}
+
+export async function sendQuotationByWhatsApp(quotationId: number, toPhone?: string) {
+  const built = await buildQuotationDelivery(quotationId, { phone: toPhone });
+  const summary = await dispatch(built.message, { channels: ["whatsapp"] });
+  if (summary.results.some((r) => r.channel === "whatsapp" && r.delivered)) {
+    await db
+      .update(quotations)
+      .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
+      .where(eq(quotations.id, quotationId));
+  }
+  return summary;
+}
+
+/* ------------------------------------------------------------------ */
+/* Statement                                                           */
+/* ------------------------------------------------------------------ */
+
+async function buildStatementDelivery(
   clientId: number,
-  to: string,
+  toEmail: string,
   fromDate: string,
   toDate: string,
-  message?: string
+  recipients: Recipients,
+  extraMessage?: string
 ) {
   const [client] = await db.select().from(clients).where(eq(clients.id, clientId));
   if (!client) throw new Error("Client not found");
 
   const settings = await getSettings();
-  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
-  const templates = getEmailTemplates(settings);
+  const fmt = money(settings);
+  const emailTemplates = getEmailTemplates(settings);
+  const waTemplates = getWhatsAppTemplates(settings);
 
   const rows = await db.query.invoices.findMany({
     where: and(eq(invoices.clientId, clientId), gte(invoices.issueDate, fromDate), lte(invoices.issueDate, toDate)),
@@ -214,36 +376,74 @@ export async function sendStatementByEmail(
   });
 
   const period = `${formatDate(fromDate)} — ${formatDate(toDate)}`;
-  const emailVars = {
+  const vars = {
     companyName: settings.companyName,
     clientName: client.name,
     period,
-    invoiceCount: statementRows.length,
-    outstanding: money(outstanding),
+    invoiceCount: String(statementRows.length),
+    outstanding: fmt(outstanding),
   };
+  const link = docLink("statements");
 
   const html = buildDocumentEmail({
     kicker: "Statement of account",
     heading: `Statement for ${client.name}`,
-    greeting: renderTemplate(templates.statement.greeting, emailVars),
-    message,
+    greeting: renderTemplate(emailTemplates.statement.greeting, vars),
+    message: extraMessage,
     recipientName: client.name,
     detailRows: [
       { label: "Period", value: period },
       { label: "Invoices included", value: String(statementRows.length) },
     ],
-    highlight: { label: "Outstanding balance", value: money(outstanding) },
+    highlight: { label: "Outstanding balance", value: vars.outstanding },
     attachmentLabel: `statement-${clientName}.pdf`,
     company: companyForEmail(settings),
   });
 
-  await sendEmail({
-    to,
-    subject: renderTemplate(templates.statement.subject, emailVars),
+  const message: CommunicationMessage = {
+    type: "statement",
+    toEmail: toEmail || recipients.email || undefined,
+    toPhone: recipients.phone ?? undefined,
+    subject: renderTemplate(emailTemplates.statement.subject, vars),
     html,
-    attachments: [{ filename: `statement-${clientName}.pdf`, content: buffer.toString("base64") }],
-  });
+    text: renderTemplate(waTemplates.statement, { ...vars, link }),
+    link: link || undefined,
+    attachment: {
+      filename: `statement-${clientName}.pdf`,
+      contentBase64: buffer.toString("base64"),
+    },
+    tokens: vars,
+  };
+
+  return { message, client };
 }
+
+export async function sendStatementByEmail(
+  clientId: number,
+  to: string,
+  fromDate: string,
+  toDate: string,
+  message?: string
+) {
+  const built = await buildStatementDelivery(clientId, to, fromDate, toDate, {}, message);
+  const summary = await deliverEmailOrThrow(built.message);
+  return summary;
+}
+
+export async function sendStatementByWhatsApp(
+  clientId: number,
+  fromDate: string,
+  toDate: string,
+  toPhone?: string
+) {
+  const built = await buildStatementDelivery(clientId, "", fromDate, toDate, { phone: toPhone });
+  const summary = await dispatch(built.message, { channels: ["whatsapp"] });
+  return summary;
+}
+
+/* ------------------------------------------------------------------ */
+/* Purchase order                                                      */
+/* ------------------------------------------------------------------ */
 
 export async function sendPurchaseOrderByEmail(poId: number, to: string, message?: string) {
   const po = await db.query.purchaseOrders.findFirst({
@@ -253,9 +453,9 @@ export async function sendPurchaseOrderByEmail(poId: number, to: string, message
   if (!po) throw new Error("Purchase order not found");
 
   const settings = await getSettings();
+  const fmt = money(settings);
   const { total } = calcTotals(po.items, po.taxRate, po.discount);
-  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
-  const templates = getEmailTemplates(settings);
+  const emailTemplates = getEmailTemplates(settings);
 
   const buffer = await renderDocPDFBuffer({
     kind: "Purchase Order",
@@ -277,10 +477,10 @@ export async function sendPurchaseOrderByEmail(poId: number, to: string, message
     company: companyFromSettings(settings),
   });
 
-  const emailVars = {
+  const vars = {
     companyName: settings.companyName,
     number: po.number,
-    total: money(total),
+    total: fmt(total),
     expected: po.expectedDate ? formatDate(po.expectedDate) : "",
     supplierName: po.supplier?.name ?? "",
   };
@@ -288,7 +488,7 @@ export async function sendPurchaseOrderByEmail(poId: number, to: string, message
   const html = buildDocumentEmail({
     kicker: "Purchase order",
     heading: `Purchase order ${po.number}`,
-    greeting: renderTemplate(templates.purchaseOrder.greeting, emailVars),
+    greeting: renderTemplate(emailTemplates.purchaseOrder.greeting, vars),
     message,
     recipientName: po.supplier?.name,
     detailRows: [
@@ -296,23 +496,32 @@ export async function sendPurchaseOrderByEmail(poId: number, to: string, message
       { label: "Issue date", value: formatDate(po.issueDate) },
       ...(po.expectedDate ? [{ label: "Expected delivery", value: formatDate(po.expectedDate) }] : []),
     ],
-    highlight: { label: "Order total", value: money(total) },
+    highlight: { label: "Order total", value: vars.total },
     attachmentLabel: `${po.number}.pdf`,
     company: companyForEmail(settings),
   });
 
-  await sendEmail({
-    to,
-    subject: renderTemplate(templates.purchaseOrder.subject, emailVars),
+  const msg: CommunicationMessage = {
+    type: "documentLink",
+    toEmail: to,
+    subject: renderTemplate(emailTemplates.purchaseOrder.subject, vars),
     html,
-    attachments: [{ filename: `${po.number}.pdf`, content: buffer.toString("base64") }],
-  });
+    text: `Purchase order ${po.number} from ${settings.companyName}`,
+    attachment: { filename: `${po.number}.pdf`, contentBase64: buffer.toString("base64") },
+    tokens: vars,
+  };
 
+  const summary = await deliverEmailOrThrow(msg);
   await db
     .update(purchaseOrders)
     .set({ lastSentAt: new Date(), status: po.status === "draft" ? "sent" : po.status })
     .where(eq(purchaseOrders.id, poId));
+  return summary;
 }
+
+/* ------------------------------------------------------------------ */
+/* Job card                                                            */
+/* ------------------------------------------------------------------ */
 
 export async function sendJobCardByEmail(jobId: number, to: string, message?: string) {
   const job = await db.query.jobCards.findFirst({
@@ -322,10 +531,10 @@ export async function sendJobCardByEmail(jobId: number, to: string, message?: st
   if (!job) throw new Error("Job card not found");
 
   const settings = await getSettings();
+  const fmt = money(settings);
   const hasItems = job.items.length > 0;
   const { total } = calcTotals(job.items, job.taxRate, job.discount);
-  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
-  const templates = getEmailTemplates(settings);
+  const emailTemplates = getEmailTemplates(settings);
 
   const extraMeta = [
     job.technician ? { label: "Technician", value: job.technician } : null,
@@ -354,20 +563,20 @@ export async function sendJobCardByEmail(jobId: number, to: string, message?: st
     company: companyFromSettings(settings),
   });
 
-  const emailVars = {
+  const vars = {
     companyName: settings.companyName,
     number: job.number,
     title: job.title,
     clientName: job.client?.name ?? "",
     technician: job.technician ?? "",
     status: job.status.replace(/_/g, " "),
-    total: hasItems ? money(total) : "",
+    total: hasItems ? fmt(total) : "",
   };
 
   const html = buildDocumentEmail({
     kicker: "Job card",
     heading: `Job card ${job.number}`,
-    greeting: renderTemplate(templates.jobCard.greeting, emailVars),
+    greeting: renderTemplate(emailTemplates.jobCard.greeting, vars),
     message,
     recipientName: job.client?.name,
     detailRows: [
@@ -375,22 +584,35 @@ export async function sendJobCardByEmail(jobId: number, to: string, message?: st
       { label: "Opened", value: formatDate(job.openedDate) },
       ...(job.technician ? [{ label: "Technician", value: job.technician }] : []),
     ],
-    highlight: hasItems ? { label: "Total", value: money(total) } : { label: "Status", value: job.status.replace(/_/g, " ") },
+    highlight: hasItems ? { label: "Total", value: fmt(total) } : { label: "Status", value: vars.status },
     attachmentLabel: `${job.number}.pdf`,
     company: companyForEmail(settings),
   });
 
-  await sendEmail({
-    to,
-    subject: renderTemplate(templates.jobCard.subject, emailVars),
+  const msg: CommunicationMessage = {
+    type: "documentLink",
+    toEmail: to,
+    subject: renderTemplate(emailTemplates.jobCard.subject, vars),
     html,
-    attachments: [{ filename: `${job.number}.pdf`, content: buffer.toString("base64") }],
-  });
+    text: `Job card ${job.number} from ${settings.companyName}`,
+    attachment: { filename: `${job.number}.pdf`, contentBase64: buffer.toString("base64") },
+    tokens: vars,
+  };
 
+  const summary = await deliverEmailOrThrow(msg);
   await db.update(jobCards).set({ lastSentAt: new Date() }).where(eq(jobCards.id, jobId));
+  return summary;
 }
 
-export async function sendDeliveryNoteByEmail(dnId: number, to: string, message?: string) {
+/* ------------------------------------------------------------------ */
+/* Delivery note                                                       */
+/* ------------------------------------------------------------------ */
+
+async function buildDeliveryNoteDelivery(
+  dnId: number,
+  recipients: Recipients = {},
+  extraMessage?: string
+) {
   const dn = await db.query.deliveryNotes.findFirst({
     where: eq(deliveryNotes.id, dnId),
     with: { client: true, items: true },
@@ -398,8 +620,8 @@ export async function sendDeliveryNoteByEmail(dnId: number, to: string, message?
   if (!dn) throw new Error("Delivery note not found");
 
   const settings = await getSettings();
-  const money = (v: string | number | null | undefined) => formatMoney(v, settings.currency || "R");
-  const templates = getEmailTemplates(settings);
+  const emailTemplates = getEmailTemplates(settings);
+  const waTemplates = getWhatsAppTemplates(settings);
 
   const extraMeta = [
     dn.deliveredBy ? { label: "Delivered by", value: dn.deliveredBy } : null,
@@ -428,39 +650,64 @@ export async function sendDeliveryNoteByEmail(dnId: number, to: string, message?
     company: companyFromSettings(settings),
   });
 
-  const emailVars = {
+  const vars = {
     companyName: settings.companyName,
     number: dn.number,
     clientName: dn.client?.name ?? "",
     deliveryDate: formatDate(dn.deliveryDate),
-    itemCount: dn.items.length,
+    itemCount: String(dn.items.length),
   };
+  const link = docLink("delivery-notes", dn.id);
 
   const html = buildDocumentEmail({
     kicker: "Delivery note",
     heading: `Delivery note ${dn.number}`,
-    greeting: renderTemplate(templates.deliveryNote.greeting, emailVars),
-    message,
+    greeting: renderTemplate(emailTemplates.deliveryNote.greeting, vars),
+    message: extraMessage,
     recipientName: dn.client?.name,
     detailRows: [
       { label: "Delivery note number", value: dn.number },
       { label: "Delivery date", value: formatDate(dn.deliveryDate) },
-      { label: "Items", value: String(dn.items.length) },
+      { label: "Items", value: vars.itemCount },
     ],
     highlight: { label: "Status", value: dn.status },
     attachmentLabel: `${dn.number}.pdf`,
     company: companyForEmail(settings),
   });
 
-  await sendEmail({
-    to,
-    subject: renderTemplate(templates.deliveryNote.subject, emailVars),
+  const message: CommunicationMessage = {
+    type: "deliveryNotification",
+    toEmail: recipients.email ?? undefined,
+    toPhone: recipients.phone ?? undefined,
+    subject: renderTemplate(emailTemplates.deliveryNote.subject, vars),
     html,
-    attachments: [{ filename: `${dn.number}.pdf`, content: buffer.toString("base64") }],
-  });
+    text: renderTemplate(waTemplates.deliveryNotification, { ...vars, link }),
+    link: link || undefined,
+    attachment: { filename: `${dn.number}.pdf`, contentBase64: buffer.toString("base64") },
+    tokens: vars,
+  };
 
+  return { message, status: dn.status };
+}
+
+export async function sendDeliveryNoteByEmail(dnId: number, to: string, message?: string) {
+  const built = await buildDeliveryNoteDelivery(dnId, { email: to }, message);
+  const summary = await deliverEmailOrThrow(built.message);
   await db
     .update(deliveryNotes)
-    .set({ lastSentAt: new Date(), status: dn.status === "draft" ? "delivered" : dn.status })
+    .set({ lastSentAt: new Date(), status: built.status === "draft" ? "delivered" : built.status })
     .where(eq(deliveryNotes.id, dnId));
+  return summary;
+}
+
+export async function sendDeliveryNotificationByWhatsApp(dnId: number, toPhone?: string) {
+  const built = await buildDeliveryNoteDelivery(dnId, { phone: toPhone });
+  const summary = await dispatch(built.message, { channels: ["whatsapp"] });
+  if (summary.results.some((r) => r.channel === "whatsapp" && r.delivered)) {
+    await db
+      .update(deliveryNotes)
+      .set({ lastSentAt: new Date(), status: built.status === "draft" ? "delivered" : built.status })
+      .where(eq(deliveryNotes.id, dnId));
+  }
+  return summary;
 }

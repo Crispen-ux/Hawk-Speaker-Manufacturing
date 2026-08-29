@@ -3,13 +3,15 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { invoices } from "@/db/schema";
 import { setInvoiceStatus, deleteInvoice, addPayment, deletePayment } from "@/lib/actions/invoices";
-import { sendInvoiceEmailAction } from "@/lib/actions/send";
+import { sendInvoiceEmailAction, sendInvoiceWhatsAppAction, sendPaymentReminderAction } from "@/lib/actions/send";
 import { computeInvoice } from "@/lib/calc";
 import { formatDate, formatMoney, toNumber } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
 import { PageHeader, GhostLink, Card, Field, inputClass, PrimaryButton } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
+import SendWhatsAppForm from "@/components/SendWhatsAppForm";
+import PaymentReminderForm from "@/components/PaymentReminderForm";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const removeInvoice = deleteInvoice.bind(null, invoiceId);
   const recordPayment = addPayment.bind(null, invoiceId);
   const sendAction = sendInvoiceEmailAction.bind(null, invoiceId);
+  const waAction = sendInvoiceWhatsAppAction.bind(null, invoiceId);
+  const reminderAction = sendPaymentReminderAction.bind(null, invoiceId);
 
   return (
     <div>
@@ -190,6 +194,27 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 Last sent {formatDate(invoice.lastSentAt.toISOString())}
               </p>
             )}
+          </Card>
+
+          <Card>
+            <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">
+              Send by WhatsApp
+            </h3>
+            <SendWhatsAppForm action={waAction} defaultTo={invoice.client?.phone} buttonLabel="Send invoice by WhatsApp" />
+            {!invoice.client?.phone && (
+              <p className="mt-3 text-xs text-ink-soft">No phone on file — add one or type it in.</p>
+            )}
+          </Card>
+
+          <Card>
+            <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">
+              Payment reminder
+            </h3>
+            <PaymentReminderForm
+              action={reminderAction}
+              defaultEmail={invoice.client?.email}
+              defaultPhone={invoice.client?.phone}
+            />
           </Card>
 
           <Card>

@@ -1,6 +1,14 @@
 "use server";
 
-import { sendInvoiceByEmail, sendQuotationByEmail, sendPurchaseOrderByEmail, sendJobCardByEmail, sendDeliveryNoteByEmail } from "@/lib/send";
+import {
+  sendInvoiceByEmail,
+  sendInvoiceByWhatsApp,
+  sendPaymentReminder,
+  sendQuotationByEmail,
+  sendPurchaseOrderByEmail,
+  sendJobCardByEmail,
+  sendDeliveryNoteByEmail,
+} from "@/lib/send";
 import { revalidatePath } from "next/cache";
 
 export type SendState = { status: "idle" | "success" | "error"; message?: string };
@@ -19,6 +27,59 @@ export async function sendInvoiceEmailAction(
     revalidatePath(`/invoices/${invoiceId}`);
     revalidatePath("/invoices");
     return { status: "success", message: `Sent to ${to}.` };
+  } catch (e) {
+    return { status: "error", message: e instanceof Error ? e.message : "Something went wrong." };
+  }
+}
+
+export async function sendInvoiceWhatsAppAction(
+  invoiceId: number,
+  _prevState: SendState,
+  formData: FormData
+): Promise<SendState> {
+  const toPhone = String(formData.get("toPhone") ?? "").trim();
+  if (!toPhone) return { status: "error", message: "Enter a WhatsApp number." };
+
+  try {
+    const summary = await sendInvoiceByWhatsApp(invoiceId, toPhone);
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/invoices");
+    const wa = summary.results.find((r) => r.channel === "whatsapp");
+    if (wa?.delivered) return { status: "success", message: wa.message ?? "WhatsApp message sent." };
+    return {
+      status: "error",
+      message: wa?.message ?? wa?.error ?? "WhatsApp message was not sent.",
+    };
+  } catch (e) {
+    return { status: "error", message: e instanceof Error ? e.message : "Something went wrong." };
+  }
+}
+
+export async function sendPaymentReminderAction(
+  invoiceId: number,
+  _prevState: SendState,
+  formData: FormData
+): Promise<SendState> {
+  const to = String(formData.get("to") ?? "").trim();
+  const toPhone = String(formData.get("toPhone") ?? "").trim();
+  if (!to && !toPhone) {
+    return { status: "error", message: "Enter an email address or WhatsApp number." };
+  }
+
+  try {
+    const summary = await sendPaymentReminder(invoiceId, { email: to || null, phone: toPhone || null });
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/invoices");
+
+    const parts: string[] = [];
+    for (const r of summary.results) {
+      if (r.channel === "whatsapp" && !r.delivered) {
+        parts.push(`WhatsApp skipped (${r.message ?? r.error ?? "not delivered"})`);
+      } else if (r.delivered) {
+        parts.push(r.message ?? r.channel);
+      }
+    }
+    return { status: "success", message: parts.join(" ") || "Payment reminder sent." };
   } catch (e) {
     return { status: "error", message: e instanceof Error ? e.message : "Something went wrong." };
   }

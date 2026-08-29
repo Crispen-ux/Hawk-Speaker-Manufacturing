@@ -15,6 +15,8 @@ export const EMAIL_TEMPLATE_KEYS = {
   purchaseOrder: ["companyName", "number", "total", "expected", "supplierName"],
   jobCard: ["companyName", "number", "title", "clientName", "technician", "status"],
   deliveryNote: ["companyName", "number", "clientName", "deliveryDate", "itemCount"],
+  paymentReminder: ["companyName", "number", "total", "dueDate", "outstanding", "clientName"],
+  systemNotification: ["companyName", "subject", "message"],
 } as const;
 
 export type TemplateVars = Record<string, string | number | undefined>;
@@ -51,6 +53,15 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<string, { subject: string; greeting
   deliveryNote: {
     subject: "Delivery note {number} from {companyName}",
     greeting: "Please find attached delivery note {number} confirming {itemCount} item(s) delivered on {deliveryDate}.",
+  },
+  paymentReminder: {
+    subject: "Payment reminder — invoice {number} from {companyName}",
+    greeting:
+      "This is a friendly reminder that invoice {number} for {total} is due by {dueDate}. Balance outstanding: {outstanding}.",
+  },
+  systemNotification: {
+    subject: "{subject} from {companyName}",
+    greeting: "{message}",
   },
 };
 

@@ -4,19 +4,13 @@ import { updateModules } from "@/lib/actions/modules";
 import { getEnabledModules } from "@/lib/enabled-modules";
 import { MODULES } from "@/lib/modules";
 import { getEmailTemplates, EMAIL_TEMPLATE_KEYS } from "@/lib/email-templates";
+import { DEFAULT_WHATSAPP_TEMPLATES, WHATSAPP_TEMPLATE_KEYS } from "@/lib/communications/templates";
 import { PageHeader, Field, inputClass, PrimaryButton, Card } from "@/components/ui";
 import LogoUploader from "@/components/LogoUploader";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_WHATSAPP = JSON.stringify(
-  {
-    invoice: "Hi {clientName}, your invoice {number} for {total} is due by {dueDate}. Regards, {companyName}",
-    statement: "Hi {clientName}, please find attached your statement for {period}. Outstanding: {outstanding}.",
-  },
-  null,
-  2
-);
+const DEFAULT_WHATSAPP = JSON.stringify(DEFAULT_WHATSAPP_TEMPLATES, null, 2);
 
 const DOC_FIELDS: { label: string; prefix: string; next: string }[] = [
   { label: "Invoices", prefix: "invoicePrefix", next: "nextInvoiceNumber" },
@@ -219,11 +213,26 @@ export default async function SettingsPage() {
         <Card className="max-w-2xl">
           <h2 className="mb-1 font-display text-lg font-bold text-navy">WhatsApp templates</h2>
           <p className="mb-5 text-xs text-ink-soft">
-            Placeholders for the WhatsApp module (coming soon). JSON keyed by document type.
+            Message bodies for WhatsApp sends (invoices, quotations, statements, payment reminders, delivery
+            notifications and document links). JSON keyed by message type.
           </p>
           <Field label="Templates (JSON)">
             <textarea name="whatsappTemplates" defaultValue={whatsapp} rows={10} className={inputClass} />
           </Field>
+          <div className="mt-3 space-y-1">
+            {Object.entries(WHATSAPP_TEMPLATE_KEYS).map(([kind, keys]) => (
+              <p key={kind} className="text-xs text-ink-soft">
+                <span className="font-mono lowercase">{kind}:</span>{" "}
+                {keys.map((k) => (
+                  <code key={k} className="mr-1 rounded bg-paper-dim px-1 font-mono text-[11px]">
+                    {"{"}
+                    {k}
+                    {"}"}
+                  </code>
+                ))}
+              </p>
+            ))}
+          </div>
         </Card>
 
         <div className="max-w-2xl pt-2">
