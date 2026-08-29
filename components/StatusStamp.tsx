@@ -20,6 +20,8 @@ const COLORS: Record<string, string> = {
   active: "text-success",
   maintenance: "text-forest-2",
   disposed: "text-ink-soft",
+  on_leave: "text-forest-2",
+  terminated: "text-ink-soft",
 };
 
 export default function StatusStamp({ status }: { status: string }) {

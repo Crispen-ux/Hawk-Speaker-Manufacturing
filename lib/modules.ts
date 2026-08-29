@@ -127,7 +127,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "employees",
     label: "Employees",
     description: "People directory used by jobs, payroll and HR.",
-    built: false,
+    href: "/employees",
+    routePrefix: "/employees",
+    built: true,
   },
   {
     key: "payroll",

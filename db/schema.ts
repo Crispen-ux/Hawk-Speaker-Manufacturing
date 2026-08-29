@@ -491,6 +491,28 @@ export const assets = pgTable("assets", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ---------- Employees ----------
+// People directory linked to job cards, payroll and HR. Salary is stored as a
+// currency string so it displays exactly as entered.
+
+export const employeeStatusEnum = pgEnum("employee_status", ["active", "on_leave", "terminated"]);
+
+export const employees = pgTable("employees", {
+  id: serial("id").primaryKey(),
+  firstName: varchar("first_name", { length: 128 }).notNull(),
+  lastName: varchar("last_name", { length: 128 }).notNull(),
+  email: varchar("email", { length: 254 }).notNull(),
+  phone: varchar("phone", { length: 32 }),
+  position: varchar("position", { length: 128 }),
+  department: varchar("department", { length: 128 }),
+  idNumber: varchar("id_number", { length: 32 }),
+  startDate: date("start_date"),
+  salary: varchar("salary", { length: 64 }).default("0").notNull(),
+  status: employeeStatusEnum("status").default("active").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ---------- Document depot uploads ----------
 // Files physically stored in the depot (base64 in the row). Generated PDFs
 // are rendered on demand and listed on the depot page; anything attached here
