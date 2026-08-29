@@ -25,6 +25,7 @@ import {
   Box,
   FolderOpen,
   Briefcase,
+  Wallet,
 } from "lucide-react";
 
 const links = [
@@ -43,6 +44,7 @@ const links = [
   { href: "/assets", label: "Assets", icon: Box, module: "assets" },
   { href: "/documents", label: "Documents", icon: FolderOpen, module: "documents" },
   { href: "/employees", label: "Employees", icon: Briefcase, module: "employees" },
+  { href: "/expenses", label: "Expenses", icon: Wallet, module: "expenses" },
   { href: "/catalog", label: "Catalogue", icon: Package, module: "catalog" },
   { href: "/audit", label: "Audit log", icon: ScrollText, module: "auditLogs" },
   { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true },

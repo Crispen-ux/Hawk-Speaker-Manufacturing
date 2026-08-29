@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { invoices, quotations, clients, deliveryNotes, creditNotes, receipts } from "@/db/schema";
+import { invoices, quotations, clients, deliveryNotes, creditNotes, receipts, expenses, suppliers } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
 import { companyFromSettings } from "@/lib/company";
@@ -188,6 +188,42 @@ export async function renderReceiptPdf(receiptId: number): Promise<SharedPDF> {
   });
 
   return { buffer: Buffer.from(buffer), filename: `${receipt.number}.pdf`, title: `Receipt ${receipt.number}` };
+}
+
+/** Renders a single recorded expense. */
+export async function renderExpensePdf(expenseId: number): Promise<SharedPDF> {
+  const [expense] = await db
+    .select()
+    .from(expenses)
+    .where(eq(expenses.id, expenseId));
+  if (!expense) notFound();
+
+  const settings = await getSettings();
+  const buffer = await renderDocPDFBuffer({
+    kind: "Expense",
+    number: String(expense.id),
+    status: "recorded",
+    issueDate: expense.date,
+    dueOrExpiryLabel: "Payment method",
+    dueOrExpiryDate: expense.paymentMethod ?? "",
+    partyLabel: "Supplier",
+    client: {
+      name: (await supplierName(expense.supplierId)) ?? "",
+    },
+    items: [{ description: expense.description, quantity: "1", unitPrice: expense.amount }],
+    taxRate: "0",
+    discount: "0",
+    notes: [expense.reference ? `Reference: ${expense.reference}` : "", expense.notes ?? ""].filter(Boolean).join("\n") || null,
+    company: companyFromSettings(settings),
+  });
+
+  return { buffer: Buffer.from(buffer), filename: `expense-${expense.id}.pdf`, title: `Expense ${expense.id}` };
+}
+
+async function supplierName(supplierId: number | null): Promise<string | undefined> {
+  if (!supplierId) return undefined;
+  const [row] = await db.select().from(suppliers).where(eq(suppliers.id, supplierId));
+  return row?.name;
 }
 
 /** Renders the statement PDF for a client over a date range. */

@@ -348,6 +348,7 @@ export const suppliers = pgTable("suppliers", {
 
 export const suppliersRelations = relations(suppliers, ({ many }) => ({
   purchaseOrders: many(purchaseOrders),
+  expenses: many(expenses),
 }));
 
 // ---------- Purchase Orders ----------
@@ -512,6 +513,27 @@ export const employees = pgTable("employees", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ---------- Expenses ----------
+// Business outgoings outside of purchase orders. Optionally linked to a
+// supplier record; amount kept as a currency string for exact display.
+
+export const expenses = pgTable("expenses", {
+  id: serial("id").primaryKey(),
+  description: varchar("description", { length: 256 }).notNull(),
+  amount: varchar("amount", { length: 64 }).default("0").notNull(),
+  date: date("date").notNull(),
+  category: varchar("category", { length: 64 }),
+  paymentMethod: varchar("payment_method", { length: 64 }),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+  reference: varchar("reference", { length: 128 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  supplier: one(suppliers, { fields: [expenses.supplierId], references: [suppliers.id] }),
+}));
 
 // ---------- Document depot uploads ----------
 // Files physically stored in the depot (base64 in the row). Generated PDFs

@@ -105,7 +105,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "expenses",
     label: "Expenses",
     description: "Track business outgoings outside of purchase orders.",
-    built: false,
+    href: "/expenses",
+    routePrefix: "/expenses",
+    built: true,
   },
   {
     key: "jobCards",
