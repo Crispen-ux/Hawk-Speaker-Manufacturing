@@ -18,6 +18,8 @@ const DOC_FIELDS: { label: string; prefix: string; next: string }[] = [
   { label: "Purchase orders", prefix: "purchaseOrderPrefix", next: "nextPurchaseOrderNumber" },
   { label: "Job cards", prefix: "jobCardPrefix", next: "nextJobCardNumber" },
   { label: "Delivery notes", prefix: "deliveryNotePrefix", next: "nextDeliveryNoteNumber" },
+  { label: "Credit notes", prefix: "creditNotePrefix", next: "nextCreditNoteNumber" },
+  { label: "Receipts", prefix: "receiptPrefix", next: "nextReceiptNumber" },
 ];
 
 const EMAIL_SECTION_HINT: Record<string, string> = {

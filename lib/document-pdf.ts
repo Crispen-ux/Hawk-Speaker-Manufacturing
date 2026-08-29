@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { invoices, quotations, clients, deliveryNotes } from "@/db/schema";
+import { invoices, quotations, clients, deliveryNotes, creditNotes, receipts } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
 import { companyFromSettings } from "@/lib/company";
@@ -39,7 +39,10 @@ export async function renderInvoicePdf(invoiceId: number): Promise<SharedPDF> {
     discount: invoice.discount,
     notes: invoice.notes,
     paid,
-    company: companyFromSettings(settings),
+    company: {
+      ...companyFromSettings(settings),
+      paymentTerms: invoice.paymentTerms ?? companyFromSettings(settings).paymentTerms,
+    },
   });
 
   return { buffer: Buffer.from(buffer), filename: `${invoice.number}.pdf`, title: `Invoice ${invoice.number}` };
@@ -70,7 +73,10 @@ export async function renderQuotationPdf(quotationId: number): Promise<SharedPDF
     taxRate: quotation.taxRate,
     discount: quotation.discount,
     notes: quotation.notes,
-    company: companyFromSettings(settings),
+    company: {
+      ...companyFromSettings(settings),
+      paymentTerms: quotation.paymentTerms ?? companyFromSettings(settings).paymentTerms,
+    },
   });
 
   return { buffer: Buffer.from(buffer), filename: `${quotation.number}.pdf`, title: `Quotation ${quotation.number}` };
@@ -113,6 +119,75 @@ export async function renderDeliveryNotePdf(dnId: number): Promise<SharedPDF> {
   });
 
   return { buffer: Buffer.from(buffer), filename: `${dn.number}.pdf`, title: `Delivery note ${dn.number}` };
+}
+
+/** Renders the PDF for a credit note (a negative-value document against an invoice). */
+export async function renderCreditNotePdf(creditNoteId: number): Promise<SharedPDF> {
+  const cn = await db.query.creditNotes.findFirst({
+    where: eq(creditNotes.id, creditNoteId),
+    with: { client: true, items: true, invoice: true },
+  });
+  if (!cn) notFound();
+
+  const settings = await getSettings();
+  const buffer = await renderDocPDFBuffer({
+    kind: "Credit Note",
+    number: cn.number,
+    status: cn.status,
+    issueDate: cn.issueDate,
+    dueOrExpiryLabel: cn.invoice ? "Applies to invoice" : "",
+    dueOrExpiryDate: cn.invoice ? cn.invoice.number : "",
+    partyLabel: "Issued to",
+    client: {
+      name: cn.client?.name ?? "",
+      email: cn.client?.email,
+      address: cn.client?.address,
+    },
+    items: cn.items,
+    taxRate: cn.taxRate,
+    discount: cn.discount,
+    notes: cn.notes,
+    company: companyFromSettings(settings),
+  });
+
+  return { buffer: Buffer.from(buffer), filename: `${cn.number}.pdf`, title: `Credit note ${cn.number}` };
+}
+
+/** Renders the PDF for a receipt. */
+export async function renderReceiptPdf(receiptId: number): Promise<SharedPDF> {
+  const receipt = await db.query.receipts.findFirst({
+    where: eq(receipts.id, receiptId),
+    with: { client: true, invoice: true },
+  });
+  if (!receipt) notFound();
+
+  const settings = await getSettings();
+  const buffer = await renderDocPDFBuffer({
+    kind: "Receipt",
+    number: receipt.number,
+    status: "paid",
+    issueDate: receipt.issueDate,
+    dueOrExpiryLabel: "",
+    dueOrExpiryDate: "",
+    partyLabel: "Received from",
+    client: {
+      name: receipt.client?.name ?? "",
+      email: receipt.client?.email,
+      address: receipt.client?.address,
+    },
+    extraMeta: [
+      receipt.invoice ? { label: "Against invoice", value: receipt.invoice.number } : null,
+      receipt.method ? { label: "Method", value: receipt.method } : null,
+      receipt.note ? { label: "Note", value: receipt.note } : null,
+    ].filter((m): m is { label: string; value: string } => m !== null),
+    items: [{ description: "Payment received", quantity: "1", unitPrice: receipt.amount }],
+    taxRate: "0",
+    discount: "0",
+    notes: "Thank you for your payment.",
+    company: companyFromSettings(settings),
+  });
+
+  return { buffer: Buffer.from(buffer), filename: `${receipt.number}.pdf`, title: `Receipt ${receipt.number}` };
 }
 
 /** Renders the statement PDF for a client over a date range. */

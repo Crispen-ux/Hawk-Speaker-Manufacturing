@@ -54,6 +54,13 @@ export const jobCardStatusEnum = pgEnum("job_card_status", [
 
 export const deliveryNoteStatusEnum = pgEnum("delivery_note_status", ["draft", "delivered"]);
 
+export const creditNoteStatusEnum = pgEnum("credit_note_status", [
+  "draft",
+  "issued",
+  "applied",
+  "cancelled",
+]);
+
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 256 }).notNull(),
@@ -76,6 +83,7 @@ export const invoices = pgTable("invoices", {
   taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
   discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
   notes: text("notes"),
+  paymentTerms: text("payment_terms"),
   lastSentAt: timestamp("last_sent_at"),
   recurringInvoiceId: integer("recurring_invoice_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -104,6 +112,80 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ---------- Credit notes ----------
+// Credit against a client's account, optionally linked to the invoice it
+// reverses. Amounts are stored as positive values (the amount being credited).
+
+export const creditNotes = pgTable("credit_notes", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 64 }).notNull().unique(),
+  clientId: integer("client_id")
+    .references(() => clients.id, { onDelete: "cascade" })
+    .notNull(),
+  invoiceId: integer("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+  issueDate: date("issue_date").notNull(),
+  status: creditNoteStatusEnum("status").default("draft").notNull(),
+  taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
+  discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
+  notes: text("notes"),
+  paymentTerms: text("payment_terms"),
+  lastSentAt: timestamp("last_sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const creditNoteItems = pgTable("credit_note_items", {
+  id: serial("id").primaryKey(),
+  creditNoteId: integer("credit_note_id")
+    .references(() => creditNotes.id, { onDelete: "cascade" })
+    .notNull(),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+// ---------- Receipts ----------
+// One receipt per recorded payment, capturing the payment's "moment" with a
+// unique number. Created automatically when a payment is recorded.
+
+export const receipts = pgTable("receipts", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 64 }).notNull().unique(),
+  paymentId: integer("payment_id")
+    .references(() => payments.id, { onDelete: "cascade" })
+    .notNull(),
+  invoiceId: integer("invoice_id")
+    .references(() => invoices.id, { onDelete: "cascade" })
+    .notNull(),
+  clientId: integer("client_id")
+    .references(() => clients.id, { onDelete: "cascade" })
+    .notNull(),
+  issueDate: date("issue_date").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  method: varchar("method", { length: 64 }),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const creditNotesRelations = relations(creditNotes, ({ one, many }) => ({
+  client: one(clients, { fields: [creditNotes.clientId], references: [clients.id] }),
+  invoice: one(invoices, { fields: [creditNotes.invoiceId], references: [invoices.id] }),
+  items: many(creditNoteItems),
+}));
+
+export const creditNoteItemsRelations = relations(creditNoteItems, ({ one }) => ({
+  creditNote: one(creditNotes, {
+    fields: [creditNoteItems.creditNoteId],
+    references: [creditNotes.id],
+  }),
+}));
+
+export const receiptsRelations = relations(receipts, ({ one }) => ({
+  payment: one(payments, { fields: [receipts.paymentId], references: [payments.id] }),
+  invoice: one(invoices, { fields: [receipts.invoiceId], references: [invoices.id] }),
+  client: one(clients, { fields: [receipts.clientId], references: [clients.id] }),
+}));
+
 export const quotations = pgTable("quotations", {
   id: serial("id").primaryKey(),
   number: varchar("number", { length: 64 }).notNull().unique(),
@@ -116,6 +198,7 @@ export const quotations = pgTable("quotations", {
   taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
   discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
   notes: text("notes"),
+  paymentTerms: text("payment_terms"),
   lastSentAt: timestamp("last_sent_at"),
   convertedInvoiceId: integer("converted_invoice_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -154,11 +237,15 @@ export const settings = pgTable("settings", {
   purchaseOrderPrefix: varchar("purchase_order_prefix", { length: 16 }).default("PO-").notNull(),
   jobCardPrefix: varchar("job_card_prefix", { length: 16 }).default("JOB-").notNull(),
   deliveryNotePrefix: varchar("delivery_note_prefix", { length: 16 }).default("DN-").notNull(),
+  creditNotePrefix: varchar("credit_note_prefix", { length: 16 }).default("CN-").notNull(),
+  receiptPrefix: varchar("receipt_prefix", { length: 16 }).default("RCPT-").notNull(),
   nextInvoiceNumber: integer("next_invoice_number").default(1).notNull(),
   nextQuotationNumber: integer("next_quotation_number").default(1).notNull(),
   nextPurchaseOrderNumber: integer("next_purchase_order_number").default(1).notNull(),
   nextJobCardNumber: integer("next_job_card_number").default(1).notNull(),
   nextDeliveryNoteNumber: integer("next_delivery_note_number").default(1).notNull(),
+  nextCreditNoteNumber: integer("next_credit_note_number").default(1).notNull(),
+  nextReceiptNumber: integer("next_receipt_number").default(1).notNull(),
   emailTemplates: text("email_templates"),
   whatsappTemplates: text("whatsapp_templates"),
 });
@@ -219,12 +306,15 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   recurringInvoices: many(recurringInvoices),
   jobCards: many(jobCards),
   deliveryNotes: many(deliveryNotes),
+  creditNotes: many(creditNotes),
+  receipts: many(receipts),
 }));
 
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
   client: one(clients, { fields: [invoices.clientId], references: [clients.id] }),
   items: many(invoiceItems),
   payments: many(payments),
+  creditNotes: many(creditNotes),
 }));
 
 export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
@@ -410,5 +500,19 @@ export const documentLinks = pgTable("document_links", {
   clientId: integer("client_id"),
   fromDate: date("from_date"),
   toDate: date("to_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ---------- Audit log ----------
+// Append-only trail of important actions against documents (created, updated,
+// status changed, sent, payment recorded, converted, deleted…).
+
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  documentKind: varchar("document_kind", { length: 32 }).notNull(),
+  documentId: integer("document_id").notNull(),
+  documentNumber: varchar("document_number", { length: 64 }),
+  action: varchar("action", { length: 40 }).notNull(),
+  detail: text("detail"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

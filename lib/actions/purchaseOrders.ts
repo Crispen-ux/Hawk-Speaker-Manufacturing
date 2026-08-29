@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextPurchaseOrderNumber } from "@/lib/numbering";
+import { logAudit } from "@/lib/audit";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -54,6 +55,8 @@ export async function createPurchaseOrder(formData: FormData) {
     }))
   );
 
+  await logAudit({ documentKind: "purchaseOrder", documentId: row.id, documentNumber: number, action: "created" });
+
   revalidatePath("/purchase-orders");
   redirect(`/purchase-orders/${row.id}`);
 }
@@ -85,6 +88,8 @@ export async function updatePurchaseOrder(id: number, formData: FormData) {
     );
   }
 
+  await logAudit({ documentKind: "purchaseOrder", documentId: id, action: "updated" });
+
   revalidatePath("/purchase-orders");
   revalidatePath(`/purchase-orders/${id}`);
   redirect(`/purchase-orders/${id}`);
@@ -95,11 +100,18 @@ export async function setPurchaseOrderStatus(
   status: (typeof purchaseOrders.status.enumValues)[number]
 ) {
   await db.update(purchaseOrders).set({ status }).where(eq(purchaseOrders.id, id));
+  await logAudit({ documentKind: "purchaseOrder", documentId: id, action: "status_changed", detail: `→ ${status}` });
   revalidatePath("/purchase-orders");
   revalidatePath(`/purchase-orders/${id}`);
 }
 
 export async function deletePurchaseOrder(id: number) {
+  const [row] = await db
+    .select({ number: purchaseOrders.number })
+    .from(purchaseOrders)
+    .where(eq(purchaseOrders.id, id))
+    .limit(1);
+  if (row) await logAudit({ documentKind: "purchaseOrder", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
   revalidatePath("/purchase-orders");
   redirect("/purchase-orders");

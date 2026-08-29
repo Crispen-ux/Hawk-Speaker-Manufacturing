@@ -12,6 +12,8 @@ import StatusStamp from "@/components/StatusStamp";
 import SendEmailForm from "@/components/SendEmailForm";
 import SendWhatsAppForm from "@/components/SendWhatsAppForm";
 import PaymentReminderForm from "@/components/PaymentReminderForm";
+import AuditTimeline from "@/components/AuditTimeline";
+import { getAuditForDocument } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   if (!invoice) notFound();
 
   const totals = computeInvoice(invoice, invoice.items, invoice.payments);
+  const history = await getAuditForDocument("invoice", invoiceId);
   const setStatus = setInvoiceStatus.bind(null, invoiceId);
   const removeInvoice = deleteInvoice.bind(null, invoiceId);
   const recordPayment = addPayment.bind(null, invoiceId);
@@ -51,6 +54,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               Download PDF
             </a>
             <GhostLink href={`/invoices/${invoice.id}/edit`}>Edit</GhostLink>
+            <GhostLink href={`/credit-notes/new?invoice=${invoice.id}`}>Credit note</GhostLink>
           </div>
         }
       />
@@ -180,6 +184,10 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 <PrimaryButton type="submit">Record payment</PrimaryButton>
               </form>
             </Card>
+          </div>
+
+          <div className="mt-6">
+            <AuditTimeline entries={history} />
           </div>
         </div>
 

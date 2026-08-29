@@ -7,6 +7,8 @@ import {
   LayoutDashboard,
   FileText,
   FileSignature,
+  FileMinus,
+  BadgeCheck,
   Repeat,
   Receipt,
   Users,
@@ -19,6 +21,7 @@ import {
   Truck,
   Wrench,
   Building2,
+  ScrollText,
 } from "lucide-react";
 
 const links = [
@@ -28,11 +31,14 @@ const links = [
   { href: "/recurring", label: "Recurring", icon: Repeat, module: "recurring" },
   { href: "/job-cards", label: "Job cards", icon: Wrench, module: "jobCards" },
   { href: "/delivery-notes", label: "Delivery notes", icon: Truck, module: "deliveryNotes" },
+  { href: "/credit-notes", label: "Credit notes", icon: FileMinus, module: "creditNotes" },
+  { href: "/receipts", label: "Receipts", icon: BadgeCheck, module: "receipts" },
   { href: "/purchase-orders", label: "Purchase orders", icon: ShoppingCart, module: "purchaseOrders" },
   { href: "/statements", label: "Statements", icon: Receipt, module: "statements" },
   { href: "/clients", label: "Clients", icon: Users, module: "customers" },
   { href: "/suppliers", label: "Suppliers", icon: Building2, module: "suppliers" },
   { href: "/catalog", label: "Catalogue", icon: Package, module: "catalog" },
+  { href: "/audit", label: "Audit log", icon: ScrollText, module: "auditLogs" },
   { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true },
 ];
 

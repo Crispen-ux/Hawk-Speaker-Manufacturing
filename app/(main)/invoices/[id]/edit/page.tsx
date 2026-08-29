@@ -47,6 +47,15 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             </Field>
           </div>
 
+          <Field label="Payment terms (override PDF default)">
+            <input
+              name="paymentTerms"
+              defaultValue={invoice.paymentTerms ?? ""}
+              className={inputClass}
+              placeholder={`e.g. Net ${settings.paymentTermsDays ?? 14} days`}
+            />
+          </Field>
+
           <LineItemsEditor
             initialItems={invoice.items.map((it) => ({
               description: it.description,

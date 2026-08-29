@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { renderInvoicePdf } from "@/lib/document-pdf";
+import { renderCreditNotePdf } from "@/lib/document-pdf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,9 +8,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let pdf: Awaited<ReturnType<typeof renderInvoicePdf>>;
+  let pdf: Awaited<ReturnType<typeof renderCreditNotePdf>>;
   try {
-    pdf = await renderInvoicePdf(Number((await params).id));
+    pdf = await renderCreditNotePdf(Number((await params).id));
   } catch {
     return new Response("Not found", { status: 404, headers: { "Content-Type": "text/plain" } });
   }

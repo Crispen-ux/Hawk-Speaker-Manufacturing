@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { resolveDocumentLink } from "@/lib/public-links";
-import { renderInvoicePdf, renderQuotationPdf, renderStatementPdf, renderDeliveryNotePdf } from "@/lib/document-pdf";
+import { renderInvoicePdf, renderQuotationPdf, renderStatementPdf, renderDeliveryNotePdf, renderCreditNotePdf, renderReceiptPdf } from "@/lib/document-pdf";
 import type { SharedPDF } from "@/lib/document-pdf";
 
 export const runtime = "nodejs";
@@ -17,6 +17,10 @@ async function pdfFor(meta: Awaited<ReturnType<typeof resolveDocumentLink>>): Pr
       return renderDeliveryNotePdf(meta.documentId);
     case "statement":
       return renderStatementPdf(meta.clientId, meta.fromDate, meta.toDate);
+    case "creditNote":
+      return renderCreditNotePdf(meta.documentId);
+    case "receipt":
+      return renderReceiptPdf(meta.documentId);
   }
 }
 

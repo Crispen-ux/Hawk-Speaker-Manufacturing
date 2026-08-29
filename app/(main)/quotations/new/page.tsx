@@ -74,6 +74,15 @@ export default async function NewQuotationPage({
             currency={settings.currency}
           />
 
+          <Field label="Payment terms (shown on PDF)">
+            <input
+              name="paymentTerms"
+              className={inputClass}
+              defaultValue={`Net ${settings.paymentTermsDays ?? 14} days`}
+              placeholder="e.g. Net 14 days"
+            />
+          </Field>
+
           <Field label="Notes (shown on PDF)">
             <textarea name="notes" rows={3} className={inputClass} placeholder="Scope assumptions, validity terms…" />
           </Field>

@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextInvoiceNumber, nextQuotationNumber } from "@/lib/numbering";
+import { logAudit } from "@/lib/audit";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -32,6 +33,7 @@ export async function createQuotation(formData: FormData) {
   const taxRate = String(formData.get("taxRate") ?? "0");
   const discount = String(formData.get("discount") ?? "0");
   const notes = String(formData.get("notes") ?? "") || null;
+  const paymentTerms = String(formData.get("paymentTerms") ?? "") || null;
   const items = parseItems(String(formData.get("items") ?? "[]"));
 
   if (!clientId) throw new Error("Client is required");
@@ -41,7 +43,7 @@ export async function createQuotation(formData: FormData) {
 
   const [row] = await db
     .insert(quotations)
-    .values({ number, clientId, issueDate, expiryDate, taxRate, discount, notes, status: "draft" })
+    .values({ number, clientId, issueDate, expiryDate, taxRate, discount, notes, paymentTerms, status: "draft" })
     .returning({ id: quotations.id });
 
   await db.insert(quotationItems).values(
@@ -54,6 +56,8 @@ export async function createQuotation(formData: FormData) {
     }))
   );
 
+  await logAudit({ documentKind: "quotation", documentId: row.id, documentNumber: number, action: "created" });
+
   revalidatePath("/quotations");
   redirect(`/quotations/${row.id}`);
 }
@@ -65,11 +69,12 @@ export async function updateQuotation(id: number, formData: FormData) {
   const taxRate = String(formData.get("taxRate") ?? "0");
   const discount = String(formData.get("discount") ?? "0");
   const notes = String(formData.get("notes") ?? "") || null;
+  const paymentTerms = String(formData.get("paymentTerms") ?? "") || null;
   const items = parseItems(String(formData.get("items") ?? "[]"));
 
   await db
     .update(quotations)
-    .set({ clientId, issueDate, expiryDate, taxRate, discount, notes })
+    .set({ clientId, issueDate, expiryDate, taxRate, discount, notes, paymentTerms })
     .where(eq(quotations.id, id));
 
   await db.delete(quotationItems).where(eq(quotationItems.quotationId, id));
@@ -85,6 +90,8 @@ export async function updateQuotation(id: number, formData: FormData) {
     );
   }
 
+  await logAudit({ documentKind: "quotation", documentId: id, action: "updated" });
+
   revalidatePath("/quotations");
   revalidatePath(`/quotations/${id}`);
   redirect(`/quotations/${id}`);
@@ -95,11 +102,18 @@ export async function setQuotationStatus(
   status: (typeof quotations.status.enumValues)[number]
 ) {
   await db.update(quotations).set({ status }).where(eq(quotations.id, id));
+  await logAudit({ documentKind: "quotation", documentId: id, action: "status_changed", detail: `→ ${status}` });
   revalidatePath("/quotations");
   revalidatePath(`/quotations/${id}`);
 }
 
 export async function deleteQuotation(id: number) {
+  const [row] = await db
+    .select({ number: quotations.number })
+    .from(quotations)
+    .where(eq(quotations.id, id))
+    .limit(1);
+  if (row) await logAudit({ documentKind: "quotation", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(quotations).where(eq(quotations.id, id));
   revalidatePath("/quotations");
   redirect("/quotations");
@@ -127,6 +141,7 @@ export async function convertToInvoice(id: number) {
       taxRate: quote.taxRate,
       discount: quote.discount,
       notes: quote.notes,
+      paymentTerms: quote.paymentTerms,
       status: "draft",
     })
     .returning({ id: invoices.id });
@@ -147,6 +162,8 @@ export async function convertToInvoice(id: number) {
     .update(quotations)
     .set({ status: "accepted", convertedInvoiceId: inv.id })
     .where(eq(quotations.id, id));
+
+  await logAudit({ documentKind: "quotation", documentId: id, action: "converted", detail: `invoice ${inv.id}` });
 
   revalidatePath("/quotations");
   revalidatePath("/invoices");

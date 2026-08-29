@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextDeliveryNoteNumber } from "@/lib/numbering";
+import { logAudit } from "@/lib/audit";
 
 type ItemInput = { description: string; quantity: string };
 
@@ -61,6 +62,8 @@ export async function createDeliveryNote(formData: FormData) {
     }))
   );
 
+  await logAudit({ documentKind: "deliveryNote", documentId: row.id, documentNumber: number, action: "created" });
+
   revalidatePath("/delivery-notes");
   redirect(`/delivery-notes/${row.id}`);
 }
@@ -91,6 +94,8 @@ export async function updateDeliveryNote(id: number, formData: FormData) {
     );
   }
 
+  await logAudit({ documentKind: "deliveryNote", documentId: id, action: "updated" });
+
   revalidatePath("/delivery-notes");
   revalidatePath(`/delivery-notes/${id}`);
   redirect(`/delivery-notes/${id}`);
@@ -101,11 +106,18 @@ export async function setDeliveryNoteStatus(
   status: (typeof deliveryNotes.status.enumValues)[number]
 ) {
   await db.update(deliveryNotes).set({ status }).where(eq(deliveryNotes.id, id));
+  await logAudit({ documentKind: "deliveryNote", documentId: id, action: "status_changed", detail: `→ ${status}` });
   revalidatePath("/delivery-notes");
   revalidatePath(`/delivery-notes/${id}`);
 }
 
 export async function deleteDeliveryNote(id: number) {
+  const [row] = await db
+    .select({ number: deliveryNotes.number })
+    .from(deliveryNotes)
+    .where(eq(deliveryNotes.id, id))
+    .limit(1);
+  if (row) await logAudit({ documentKind: "deliveryNote", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(deliveryNotes).where(eq(deliveryNotes.id, id));
   revalidatePath("/delivery-notes");
   redirect("/delivery-notes");

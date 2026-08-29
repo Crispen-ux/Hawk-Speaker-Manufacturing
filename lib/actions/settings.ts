@@ -57,11 +57,15 @@ export async function updateSettings(formData: FormData) {
     purchaseOrderPrefix: str("purchaseOrderPrefix", "PO-"),
     jobCardPrefix: str("jobCardPrefix", "JOB-"),
     deliveryNotePrefix: str("deliveryNotePrefix", "DN-"),
+    creditNotePrefix: str("creditNotePrefix", "CN-"),
+    receiptPrefix: str("receiptPrefix", "RCPT-"),
     nextInvoiceNumber: int("nextInvoiceNumber", 1),
     nextQuotationNumber: int("nextQuotationNumber", 1),
     nextPurchaseOrderNumber: int("nextPurchaseOrderNumber", 1),
     nextJobCardNumber: int("nextJobCardNumber", 1),
     nextDeliveryNoteNumber: int("nextDeliveryNoteNumber", 1),
+    nextCreditNoteNumber: int("nextCreditNoteNumber", 1),
+    nextReceiptNumber: int("nextReceiptNumber", 1),
   };
 
   // Email templates come in as individual fields named

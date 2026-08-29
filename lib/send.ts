@@ -14,6 +14,7 @@ import {
 import { getWhatsAppTemplates } from "@/lib/communications/templates";
 import { publicDocumentUrl } from "@/lib/public-links";
 import { getBaseUrl } from "@/lib/base-url";
+import { logAudit } from "@/lib/audit";
 import {
   dispatch,
   type ChannelName,
@@ -53,6 +54,16 @@ function money(settings: Settings) {
 
 function emailResult(summary: SendSummary) {
   return summary.results.find((r) => r.channel === "email");
+}
+
+function auditSent(
+  kind: string,
+  documentId: number,
+  documentNumber: string | undefined,
+  action: "sent_email" | "sent_whatsapp",
+  extra?: string
+) {
+  void logAudit({ documentKind: kind, documentId, documentNumber, action, detail: extra });
 }
 
 /** Primary-channel guard: email sends that failed are surfaced to the caller. */
@@ -109,7 +120,10 @@ async function buildInvoiceDelivery(
     discount: invoice.discount,
     notes: invoice.notes,
     paid,
-    company: companyFromSettings(settings),
+    company: {
+      ...companyFromSettings(settings),
+      paymentTerms: invoice.paymentTerms ?? companyFromSettings(settings).paymentTerms,
+    },
   });
 
   const vars = {
@@ -159,6 +173,7 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
     .update(invoices)
     .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
     .where(eq(invoices.id, invoiceId));
+  auditSent("invoice", invoiceId, built.vars.number, "sent_email", to);
   return summary;
 }
 
@@ -175,6 +190,7 @@ export async function sendInvoiceByWhatsApp(invoiceId: number, toPhone?: string)
       .update(invoices)
       .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
       .where(eq(invoices.id, invoiceId));
+    auditSent("invoice", invoiceId, built.vars.number, "sent_whatsapp", toPhone ?? undefined);
   }
   return summary;
 }
@@ -222,6 +238,13 @@ export async function sendPaymentReminder(
 
   const summary = await dispatch(message, { channels });
   if (recipients.email) assertEmailDelivered(summary);
+  void logAudit({
+    documentKind: "invoice",
+    documentId: invoiceId,
+    documentNumber: built.vars.number,
+    action: "reminder_sent",
+    detail: [recipients.email ?? "", recipients.phone ?? ""].filter(Boolean).join(", ") || undefined,
+  });
   return summary;
 }
 
@@ -262,7 +285,10 @@ async function buildQuotationDelivery(
     taxRate: quotation.taxRate,
     discount: quotation.discount,
     notes: quotation.notes,
-    company: companyFromSettings(settings),
+    company: {
+      ...companyFromSettings(settings),
+      paymentTerms: quotation.paymentTerms ?? companyFromSettings(settings).paymentTerms,
+    },
   });
 
   const vars = {
@@ -312,6 +338,7 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
     .update(quotations)
     .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
     .where(eq(quotations.id, quotationId));
+  auditSent("quotation", quotationId, built.message.tokens?.number, "sent_email", to);
   return summary;
 }
 
@@ -323,6 +350,7 @@ export async function sendQuotationByWhatsApp(quotationId: number, toPhone?: str
       .update(quotations)
       .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
       .where(eq(quotations.id, quotationId));
+    auditSent("quotation", quotationId, built.message.tokens?.number, "sent_whatsapp", toPhone ?? undefined);
   }
   return summary;
 }
@@ -422,6 +450,12 @@ export async function sendStatementByEmail(
 ) {
   const built = await buildStatementDelivery(clientId, to, fromDate, toDate, {}, message);
   const summary = await deliverEmailOrThrow(built.message);
+  void logAudit({
+    documentKind: "statement",
+    documentId: 0,
+    action: "sent_email",
+    detail: `client ${built.client.name} · ${fromDate} → ${toDate} · ${to}`,
+  });
   return summary;
 }
 
@@ -433,6 +467,12 @@ export async function sendStatementByWhatsApp(
 ) {
   const built = await buildStatementDelivery(clientId, "", fromDate, toDate, { phone: toPhone });
   const summary = await dispatch(built.message, { channels: ["whatsapp"] });
+  void logAudit({
+    documentKind: "statement",
+    documentId: 0,
+    action: "sent_whatsapp",
+    detail: `client ${built.client.name} · ${fromDate} → ${toDate} · ${toPhone ?? ""}`.trim(),
+  });
   return summary;
 }
 
@@ -511,6 +551,7 @@ export async function sendPurchaseOrderByEmail(poId: number, to: string, message
     .update(purchaseOrders)
     .set({ lastSentAt: new Date(), status: po.status === "draft" ? "sent" : po.status })
     .where(eq(purchaseOrders.id, poId));
+  auditSent("purchaseOrder", poId, vars.number, "sent_email", to);
   return summary;
 }
 
@@ -596,6 +637,7 @@ export async function sendJobCardByEmail(jobId: number, to: string, message?: st
 
   const summary = await deliverEmailOrThrow(msg);
   await db.update(jobCards).set({ lastSentAt: new Date() }).where(eq(jobCards.id, jobId));
+  auditSent("jobCard", jobId, vars.number, "sent_email", to);
   return summary;
 }
 
@@ -692,6 +734,7 @@ export async function sendDeliveryNoteByEmail(dnId: number, to: string, message?
     .update(deliveryNotes)
     .set({ lastSentAt: new Date(), status: built.status === "draft" ? "delivered" : built.status })
     .where(eq(deliveryNotes.id, dnId));
+  auditSent("deliveryNote", dnId, built.message.tokens?.number, "sent_email", to);
   return summary;
 }
 
@@ -703,6 +746,7 @@ export async function sendDeliveryNotificationByWhatsApp(dnId: number, toPhone?:
       .update(deliveryNotes)
       .set({ lastSentAt: new Date(), status: built.status === "draft" ? "delivered" : built.status })
       .where(eq(deliveryNotes.id, dnId));
+    auditSent("deliveryNote", dnId, built.message.tokens?.number, "sent_whatsapp", toPhone ?? undefined);
   }
   return summary;
 }

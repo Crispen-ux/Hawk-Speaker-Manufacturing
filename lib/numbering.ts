@@ -9,8 +9,22 @@ async function ensureSettingsRow() {
   }
 }
 
-type NumberField = "nextInvoiceNumber" | "nextQuotationNumber" | "nextPurchaseOrderNumber" | "nextJobCardNumber" | "nextDeliveryNoteNumber";
-type PrefixField = "invoicePrefix" | "quotationPrefix" | "purchaseOrderPrefix" | "jobCardPrefix" | "deliveryNotePrefix";
+type NumberField =
+  | "nextInvoiceNumber"
+  | "nextQuotationNumber"
+  | "nextPurchaseOrderNumber"
+  | "nextJobCardNumber"
+  | "nextDeliveryNoteNumber"
+  | "nextCreditNoteNumber"
+  | "nextReceiptNumber";
+type PrefixField =
+  | "invoicePrefix"
+  | "quotationPrefix"
+  | "purchaseOrderPrefix"
+  | "jobCardPrefix"
+  | "deliveryNotePrefix"
+  | "creditNotePrefix"
+  | "receiptPrefix";
 
 async function nextNumber(numberField: NumberField, prefixField: PrefixField) {
   await ensureSettingsRow();
@@ -29,6 +43,8 @@ export const nextQuotationNumber = () => nextNumber("nextQuotationNumber", "quot
 export const nextPurchaseOrderNumber = () => nextNumber("nextPurchaseOrderNumber", "purchaseOrderPrefix");
 export const nextJobCardNumber = () => nextNumber("nextJobCardNumber", "jobCardPrefix");
 export const nextDeliveryNoteNumber = () => nextNumber("nextDeliveryNoteNumber", "deliveryNotePrefix");
+export const nextCreditNoteNumber = () => nextNumber("nextCreditNoteNumber", "creditNotePrefix");
+export const nextReceiptNumber = () => nextNumber("nextReceiptNumber", "receiptPrefix");
 
 export async function getSettings() {
   await ensureSettingsRow();

@@ -170,10 +170,12 @@ const STATUS_COLOR: Record<string, string> = {
   completed: "#1F8A5A",
   invoiced: "#1F8A5A",
   delivered: "#1F8A5A",
+  issued: "#0E93A8",
+  applied: "#1F8A5A",
 };
 
 export type DocPDFProps = {
-  kind: "Invoice" | "Quotation" | "Purchase Order" | "Job Card" | "Delivery Note";
+  kind: "Invoice" | "Quotation" | "Purchase Order" | "Job Card" | "Delivery Note" | "Credit Note" | "Receipt";
   number: string;
   status: string;
   issueDate: string;

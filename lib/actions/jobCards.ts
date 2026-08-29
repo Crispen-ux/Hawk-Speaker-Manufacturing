@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextInvoiceNumber, nextJobCardNumber } from "@/lib/numbering";
+import { logAudit } from "@/lib/audit";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 
@@ -71,6 +72,8 @@ export async function createJobCard(formData: FormData) {
     );
   }
 
+  await logAudit({ documentKind: "jobCard", documentId: row.id, documentNumber: number, action: "created" });
+
   revalidatePath("/job-cards");
   redirect(`/job-cards/${row.id}`);
 }
@@ -106,6 +109,8 @@ export async function updateJobCard(id: number, formData: FormData) {
     );
   }
 
+  await logAudit({ documentKind: "jobCard", documentId: id, action: "updated" });
+
   revalidatePath("/job-cards");
   revalidatePath(`/job-cards/${id}`);
   redirect(`/job-cards/${id}`);
@@ -117,11 +122,18 @@ export async function setJobCardStatus(id: number, status: (typeof jobCards.stat
     patch.completedDate = new Date().toISOString().slice(0, 10);
   }
   await db.update(jobCards).set(patch).where(eq(jobCards.id, id));
+  await logAudit({ documentKind: "jobCard", documentId: id, action: "status_changed", detail: `→ ${status}` });
   revalidatePath("/job-cards");
   revalidatePath(`/job-cards/${id}`);
 }
 
 export async function deleteJobCard(id: number) {
+  const [row] = await db
+    .select({ number: jobCards.number })
+    .from(jobCards)
+    .where(eq(jobCards.id, id))
+    .limit(1);
+  if (row) await logAudit({ documentKind: "jobCard", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(jobCards).where(eq(jobCards.id, id));
   revalidatePath("/job-cards");
   redirect("/job-cards");
@@ -168,6 +180,8 @@ export async function convertJobCardToInvoice(id: number) {
     .update(jobCards)
     .set({ status: "invoiced", convertedInvoiceId: inv.id })
     .where(eq(jobCards.id, id));
+
+  await logAudit({ documentKind: "jobCard", documentId: id, action: "converted", detail: `invoice ${inv.id}` });
 
   revalidatePath("/job-cards");
   revalidatePath("/invoices");

@@ -47,6 +47,15 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
             </Field>
           </div>
 
+          <Field label="Payment terms (override PDF default)">
+            <input
+              name="paymentTerms"
+              defaultValue={quotation.paymentTerms ?? ""}
+              className={inputClass}
+              placeholder={`e.g. Net ${settings.paymentTermsDays ?? 14} days`}
+            />
+          </Field>
+
           <LineItemsEditor
             initialItems={quotation.items.map((it) => ({
               description: it.description,
