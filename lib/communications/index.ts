@@ -2,6 +2,7 @@ import type { ChannelName, CommunicationMessage, SendSummary } from "./types";
 import type { CommunicationChannel } from "./channels/channel";
 import { emailChannel } from "./channels/email";
 import { whatsappChannel } from "./channels/whatsapp";
+import { getEnabledModules } from "@/lib/enabled-modules";
 
 /**
  * The registry of all channels the application knows about. Adding a new
@@ -12,6 +13,12 @@ const channels = {
   email: emailChannel,
   whatsapp: whatsappChannel,
 } as const satisfies Record<ChannelName, CommunicationChannel>;
+
+/** Module key that gates each channel. A disabled module blocks its channel. */
+const channelModules: Record<ChannelName, string> = {
+  email: "email",
+  whatsapp: "whatsapp",
+};
 
 export type {
   ChannelName,
@@ -44,9 +51,20 @@ export async function dispatch(
   message: CommunicationMessage,
   options: { channels?: ChannelName[] } = {}
 ): Promise<SendSummary> {
+  const enabled = await getEnabledModules();
   const targets = options.channels ?? allChannels();
+
   const results = await Promise.all(
     targets.map(async (name): Promise<SendSummary["results"][number]> => {
+      const moduleKey = channelModules[name];
+      if (moduleKey && enabled[moduleKey] === false) {
+        return {
+          channel: name,
+          ok: false,
+          delivered: false,
+          error: "This channel is disabled — turn it back on in Settings.",
+        };
+      }
       try {
         return await channels[name].send(message);
       } catch (e) {

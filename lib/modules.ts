@@ -171,7 +171,7 @@ export const MODULES: readonly ModuleDef[] = [
     key: "email",
     label: "Email",
     description: "Outbound email for invoices, quotations, statements and delivery notes (via Resend).",
-    built: false,
+    built: true,
   },
   {
     key: "documents",
