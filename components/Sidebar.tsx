@@ -22,6 +22,7 @@ import {
   Wrench,
   Building2,
   ScrollText,
+  Box,
 } from "lucide-react";
 
 const links = [
@@ -37,6 +38,7 @@ const links = [
   { href: "/statements", label: "Statements", icon: Receipt, module: "statements" },
   { href: "/clients", label: "Clients", icon: Users, module: "customers" },
   { href: "/suppliers", label: "Suppliers", icon: Building2, module: "suppliers" },
+  { href: "/assets", label: "Assets", icon: Box, module: "assets" },
   { href: "/catalog", label: "Catalogue", icon: Package, module: "catalog" },
   { href: "/audit", label: "Audit log", icon: ScrollText, module: "auditLogs" },
   { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true },

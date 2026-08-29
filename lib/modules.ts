@@ -145,7 +145,9 @@ export const MODULES: readonly ModuleDef[] = [
     key: "assets",
     label: "Assets",
     description: "Company equipment and asset register.",
-    built: false,
+    href: "/assets",
+    routePrefix: "/assets",
+    built: true,
   },
   {
     key: "reports",

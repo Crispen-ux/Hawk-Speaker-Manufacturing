@@ -15,6 +15,11 @@ const COLORS: Record<string, string> = {
   completed: "text-success",
   invoiced: "text-success",
   delivered: "text-success",
+  issued: "text-forest",
+  applied: "text-success",
+  active: "text-success",
+  maintenance: "text-forest-2",
+  disposed: "text-ink-soft",
 };
 
 export default function StatusStamp({ status }: { status: string }) {

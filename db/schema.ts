@@ -474,6 +474,23 @@ export const deliveryNoteItemsRelations = relations(deliveryNoteItems, ({ one })
   }),
 }));
 
+// ---------- Asset register ----------
+// Company equipment and assets, tracked with a status and book value.
+
+export const assetStatusEnum = pgEnum("asset_status", ["active", "maintenance", "disposed"]);
+
+export const assets = pgTable("assets", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  category: varchar("category", { length: 128 }),
+  serialNumber: varchar("serial_number", { length: 128 }),
+  value: numeric("value", { precision: 14, scale: 2 }).default("0").notNull(),
+  purchaseDate: date("purchase_date"),
+  status: assetStatusEnum("status").default("active").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ---------- Modules ----------
 // A row exists only once a module's toggle has been saved in Settings; missing
 // rows default to enabled. Keyed by the ModuleDef keys in lib/modules.ts.
