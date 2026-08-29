@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# whatsapp bridge — the data/ folder holds live WhatsApp login credentials
+/whatsapp-bridge/data
+/whatsapp-bridge/node_modules
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

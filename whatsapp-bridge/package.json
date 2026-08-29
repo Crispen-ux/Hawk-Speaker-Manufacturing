@@ -1,0 +1,16 @@
+{
+  "name": "whatsapp-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "No-provider WhatsApp sender: pairs a real WhatsApp number via QR (Baileys Web protocol) and exposes a tiny HTTP API the invoicing app calls.",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "pino": "^10.3.1",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

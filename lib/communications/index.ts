@@ -2,6 +2,11 @@ import type { ChannelName, CommunicationMessage, SendSummary } from "./types";
 import type { CommunicationChannel } from "./channels/channel";
 import { emailChannel } from "./channels/email";
 import { whatsappChannel } from "./channels/whatsapp";
+import {
+  registerWhatsAppDriver,
+  type WhatsAppDriver,
+} from "./channels/whatsapp";
+import { baileysBridgeDriver } from "./channels/baileys-bridge";
 import { getEnabledModules } from "@/lib/enabled-modules";
 
 /**
@@ -28,6 +33,7 @@ export type {
   SendSummary,
 } from "./types";
 export { registerWhatsAppDriver, type WhatsAppDriver } from "./channels/whatsapp";
+registerWhatsAppDriver(baileysBridgeDriver);
 
 export function allChannels(): ChannelName[] {
   return Object.keys(channels) as ChannelName[];
