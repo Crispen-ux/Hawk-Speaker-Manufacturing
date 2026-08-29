@@ -100,8 +100,10 @@ export const MODULES: readonly ModuleDef[] = [
   {
     key: "payments",
     label: "Payments",
-    description: "Record payments against invoices today; a standalone payments area is planned.",
-    built: false,
+    description: "Record payments against invoices; standalone register of everything received.",
+    href: "/payments",
+    routePrefix: "/payments",
+    built: true,
   },
   {
     key: "expenses",

@@ -119,10 +119,23 @@ export async function deleteInvoice(id: number) {
 }
 
 export async function addPayment(invoiceId: number, formData: FormData) {
-  const amount = String(formData.get("amount") ?? "0");
-  const date = String(formData.get("date"));
-  const method = String(formData.get("method") ?? "") || null;
-  const note = String(formData.get("note") ?? "") || null;
+  await recordInvoicePayment(invoiceId, {
+    amount: String(formData.get("amount") ?? "0"),
+    date: String(formData.get("date")),
+    method: String(formData.get("method") ?? "") || null,
+    note: String(formData.get("note") ?? "") || null,
+  });
+}
+
+/** Shared payment path — used by the invoice detail form and the standalone payments area. */
+export async function recordInvoicePayment(
+  invoiceId: number,
+  data: { amount: string; date: string; method?: string | null; note?: string | null }
+) {
+  const amount = data.amount;
+  const date = data.date;
+  const method = data.method ?? null;
+  const note = data.note ?? null;
 
   const [invoice] = await db
     .select({ number: invoices.number, clientId: invoices.clientId })
@@ -166,6 +179,7 @@ export async function addPayment(invoiceId: number, formData: FormData) {
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath("/invoices");
   revalidatePath("/receipts");
+  revalidatePath("/payments");
   revalidatePath("/");
 }
 
@@ -185,5 +199,6 @@ export async function deletePayment(paymentId: number, invoiceId: number) {
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath("/invoices");
   revalidatePath("/receipts");
+  revalidatePath("/payments");
   revalidatePath("/");
 }

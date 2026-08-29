@@ -29,6 +29,7 @@ import {
   CalendarDays,
   Layers,
   Bell,
+  Banknote,
 } from "lucide-react";
 
 const links = [
@@ -42,6 +43,7 @@ const links = [
   { href: "/receipts", label: "Receipts", icon: BadgeCheck, module: "receipts" },
   { href: "/purchase-orders", label: "Purchase orders", icon: ShoppingCart, module: "purchaseOrders" },
   { href: "/statements", label: "Statements", icon: Receipt, module: "statements" },
+  { href: "/payments", label: "Payments", icon: Banknote, module: "payments" },
   { href: "/clients", label: "Clients", icon: Users, module: "customers" },
   { href: "/suppliers", label: "Suppliers", icon: Building2, module: "suppliers" },
   { href: "/assets", label: "Assets", icon: Box, module: "assets" },
