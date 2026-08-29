@@ -181,7 +181,7 @@ export const MODULES: readonly ModuleDef[] = [
     key: "whatsapp",
     label: "WhatsApp",
     description: "Send invoices and notes over WhatsApp.",
-    built: false,
+    built: true,
   },
   {
     key: "email",
