@@ -337,7 +337,9 @@ export async function getIncomeStatement(from: string, to: string): Promise<Inco
     revenue -= totals(cn).total - totals(cn).tax;
   }
 
-  const operatingId = accountRows.find((a) => a.code === "5100")?.id!;
+  const operating = accountRows.find((a) => a.code === "5100");
+  if (!operating) throw new Error("Ledger is missing the operating expenses account (5100)");
+  const operatingId = operating.id;
   const expensesById = new Map<number, number>();
   for (const e of expenseRows) {
     if (!inRange(e.date)) continue;

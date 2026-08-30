@@ -2,6 +2,7 @@ import { PageHeader, Card } from "@/components/ui";
 import { getIncomeStatement } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
+import DownloadLinks from "@/components/DownloadLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -31,17 +32,23 @@ export default async function IncomeStatementPage({
         eyebrow="Profit & loss"
         title="Income statement"
         action={
-          <form method="get" className="flex items-end gap-2">
-            <label className="block">
-              <span className="mb-1.5 mr-2 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">From</span>
-              <input type="date" name="from" defaultValue={from} className="rounded-md border border-rule-strong bg-white px-3 py-2 text-sm text-ink outline-none focus:border-forest" />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 mr-2 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">To</span>
-              <input type="date" name="to" defaultValue={to} className="rounded-md border border-rule-strong bg-white px-3 py-2 text-sm text-ink outline-none focus:border-forest" />
-            </label>
-            <button className="rounded-md bg-navy px-4 py-2 text-sm font-semibold text-paper hover:bg-navy-2">Run</button>
-          </form>
+          <div className="flex items-end gap-2">
+            <form method="get" className="flex items-end gap-2">
+              <label className="block">
+                <span className="mb-1.5 mr-2 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">From</span>
+                <input type="date" name="from" defaultValue={from} className="rounded-md border border-rule-strong bg-white px-3 py-2 text-sm text-ink outline-none focus:border-forest" />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 mr-2 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">To</span>
+                <input type="date" name="to" defaultValue={to} className="rounded-md border border-rule-strong bg-white px-3 py-2 text-sm text-ink outline-none focus:border-forest" />
+              </label>
+              <button className="rounded-md bg-navy px-4 py-2 text-sm font-semibold text-paper hover:bg-navy-2">Run</button>
+            </form>
+            <DownloadLinks
+              csv={`/api/accounting/income-statement/csv?from=${from}&to=${to}`}
+              pdf={`/api/accounting/income-statement/pdf?from=${from}&to=${to}`}
+            />
+          </div>
         }
       />
 
