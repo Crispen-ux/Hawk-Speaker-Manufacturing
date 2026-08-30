@@ -185,7 +185,7 @@ export async function computeLedger(asOf?: string): Promise<LedgerResult> {
       .filter((p) => le(p.date, asOf))
       .reduce((s, p) => s + toNumber(p.amount), 0);
     arSigned += Math.max(t.total - paid, 0);
-    salesSigned -= t.subtotal;
+    salesSigned -= t.total - t.tax; // revenue is the invoiced amount net of discounts (and VAT)
     vatSigned -= t.tax;
     bankSigned += paid;
   }
@@ -195,7 +195,7 @@ export async function computeLedger(asOf?: string): Promise<LedgerResult> {
     if (!le(cn.issueDate, asOf)) continue;
     const t = totals(cn);
     arSigned -= t.total;
-    salesSigned += t.subtotal;
+    salesSigned += t.total - t.tax; // credit notes reduce revenue at their net value
     vatSigned += t.tax;
   }
 
@@ -329,12 +329,12 @@ export async function getIncomeStatement(from: string, to: string): Promise<Inco
   for (const inv of invRows) {
     if (inv.status === "cancelled") continue;
     if (!inRange(inv.issueDate)) continue;
-    revenue += totals(inv).subtotal;
+    revenue += totals(inv).total - totals(inv).tax;
   }
   for (const cn of cnRows) {
     if (cn.status === "cancelled") continue;
     if (!inRange(cn.issueDate)) continue;
-    revenue -= totals(cn).subtotal;
+    revenue -= totals(cn).total - totals(cn).tax;
   }
 
   const operatingId = accountRows.find((a) => a.code === "5100")?.id!;
