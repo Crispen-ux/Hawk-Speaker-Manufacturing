@@ -102,6 +102,7 @@ const KIND_LABELS: Record<string, string> = {
   jobCard: "Job card",
   deliveryNote: "Delivery note",
   statement: "Statement",
+  journalEntry: "Journal entry",
 };
 
 export function describeKind(kind: string): string {
@@ -122,6 +123,7 @@ export function routeForDocument(kind: string, documentId: number): string {
     expense: "/expenses",
     asset: "/assets",
     employee: "/employees",
+    journalEntry: "/accounting/journal",
   };
   const base = routes[kind];
   if (!base || documentId <= 0) return base ?? "/";
