@@ -5,6 +5,7 @@ import { desc } from "drizzle-orm";
 import { PageHeader, LinkButton, EmptyState, Card } from "@/components/ui";
 import { formatDate, formatMoney } from "@/lib/money";
 import { getSettings } from "@/lib/numbering";
+import DownloadLinks from "@/components/DownloadLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,12 @@ export default async function JournalListPage() {
       <PageHeader
         eyebrow="General ledger"
         title="Journal entries"
-        action={<LinkButton href="/accounting/journal/new">+ New entry</LinkButton>}
+        action={
+          <div className="flex items-end gap-2">
+            <DownloadLinks csv="/api/accounting/journal/csv" pdf="/api/accounting/journal/pdf" />
+            <LinkButton href="/accounting/journal/new">+ New entry</LinkButton>
+          </div>
+        }
       />
 
       {rows.length === 0 ? (

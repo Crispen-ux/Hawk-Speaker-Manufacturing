@@ -64,6 +64,12 @@ const styles = StyleSheet.create({
   },
   grandLabel: { flex: 1, fontFamily: "Helvetica-Bold", fontSize: 10, textTransform: "uppercase", color: "#FFFFFF" },
   grandValue: { width: 90, textAlign: "right", fontFamily: "Courier-Bold", fontSize: 10, color: "#FFFFFF" },
+  jTotalRow: { flexDirection: "row", marginTop: 8, paddingVertical: 7, borderTopWidth: 2, borderTopColor: "#0E2A47", backgroundColor: "#0E2A47" },
+  jTotalLabel: { flex: 1, fontFamily: "Helvetica-Bold", fontSize: 10, textTransform: "uppercase", color: "#FFFFFF" },
+  jTotalValue: { width: 80, textAlign: "right", fontFamily: "Courier-Bold", fontSize: 10, color: "#FFFFFF" },
+  colJNumber: { width: 56 },
+  colJDate: { width: 62 },
+  colJKind: { width: 48 },
   totalsRow: { flexDirection: "row", paddingVertical: 4 },
   totalsLabel: { flex: 1, color: "#5B6472" },
   totalsValue: { width: 90, textAlign: "right", fontFamily: "Courier" },
@@ -296,6 +302,89 @@ export function BalanceSheetPDF({
         </View>
         <Text style={styles.footer} fixed>
           {company.companyName} · Balance sheet as at {formatDate(asOf)}
+        </Text>
+      </Page>
+    </Document>
+  );
+}
+
+// ---------- General journal ----------
+
+export type JournalLinePdf = { accountCode: string; accountName: string; debit: number; credit: number };
+export type JournalEntryPdf = {
+  number: string;
+  date: string | null;
+  kind: "opening" | "manual";
+  memo: string;
+  reference?: string | null;
+  lines: JournalLinePdf[];
+};
+
+export function JournalPDF({
+  asOf,
+  entries,
+  totalDebits,
+  totalCredits,
+  company,
+  currency,
+}: {
+  asOf?: string;
+  entries: JournalEntryPdf[];
+  totalDebits: number;
+  totalCredits: number;
+  company: PdfCompany;
+  currency?: string;
+}) {
+  const money = moneyFor(currency ?? "");
+  return (
+    <Document title="General journal">
+      <Page size="A4" style={styles.page}>
+        <Header kicker="General ledger" title="General journal" meta={asOfLabel(asOf)} company={company} />
+        <View style={styles.table}>
+          <View style={styles.tableHeadRow}>
+            <Text style={[styles.colJNumber, styles.thText]}>Number</Text>
+            <Text style={[styles.colJDate, styles.thText]}>Date</Text>
+            <Text style={[styles.colJKind, styles.thText]}>Kind</Text>
+            <Text style={[styles.colAccount, styles.thText]}>Account</Text>
+            <Text style={[styles.colDebit, styles.thText]}>Debit</Text>
+            <Text style={[styles.colCredit, styles.thText]}>Credit</Text>
+          </View>
+          {entries.map((e) => (
+            <View key={e.number}>
+              <View style={styles.groupRow}>
+                <Text style={[styles.colJNumber, styles.mono]}>{e.number}</Text>
+                <Text style={[styles.colJDate, styles.mono]}>{e.date ? formatDate(e.date) : ""}</Text>
+                <Text style={[styles.colJKind, styles.tblGroupLabel]}>{e.kind}</Text>
+                <Text style={[styles.colAccount, styles.tblGroupLabel]}>
+                  {e.memo}
+                  {e.reference ? `  ·  ${e.reference}` : ""}
+                </Text>
+                <Text style={[styles.colDebit, styles.mono]} />
+                <Text style={[styles.colCredit, styles.mono]} />
+              </View>
+              {e.lines.map((l, i) => (
+                <View key={i} style={styles.tableRow}>
+                  <Text style={styles.colJNumber} />
+                  <Text style={styles.colJDate} />
+                  <Text style={styles.colJKind} />
+                  <Text style={styles.colAccount}>
+                    <Text style={styles.mono}>{l.accountCode}  </Text>
+                    <Text>{l.accountName}</Text>
+                  </Text>
+                  <Text style={[styles.colDebit, styles.mono]}>{l.debit > 0 ? money(l.debit) : ""}</Text>
+                  <Text style={[styles.colCredit, styles.mono]}>{l.credit > 0 ? money(l.credit) : ""}</Text>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+        <View style={styles.jTotalRow}>
+          <Text style={styles.jTotalLabel}>Total</Text>
+          <Text style={styles.jTotalValue}>{money(totalDebits)}</Text>
+          <Text style={styles.jTotalValue}>{money(totalCredits)}</Text>
+        </View>
+        <Text style={styles.footer} fixed>
+          {company.companyName} · General journal · {entries.length} entries posted
         </Text>
       </Page>
     </Document>
