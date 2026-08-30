@@ -32,6 +32,7 @@ import {
   Banknote,
   Coins,
   BarChart3,
+  Landmark,
 } from "lucide-react";
 
 const links = [
@@ -57,6 +58,7 @@ const links = [
   { href: "/catalog", label: "Catalogue", icon: Package, module: "catalog" },
   { href: "/inventory", label: "Inventory", icon: Layers, module: "inventory" },
   { href: "/notifications", label: "Notifications", icon: Bell, module: "notifications" },
+  { href: "/accounting", label: "Accounting", icon: Landmark, module: "accounting" },
   { href: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
   { href: "/audit", label: "Audit log", icon: ScrollText, module: "auditLogs" },
   { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true },

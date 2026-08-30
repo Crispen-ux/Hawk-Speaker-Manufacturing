@@ -61,6 +61,14 @@ export const creditNoteStatusEnum = pgEnum("credit_note_status", [
   "cancelled",
 ]);
 
+export const accountTypeEnum = pgEnum("account_type", [
+  "asset",
+  "liability",
+  "equity",
+  "income",
+  "expense",
+]);
+
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 256 }).notNull(),
@@ -526,6 +534,7 @@ export const expenses = pgTable("expenses", {
   category: varchar("category", { length: 64 }),
   paymentMethod: varchar("payment_method", { length: 64 }),
   supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+  accountId: integer("account_id").references(() => accounts.id, { onDelete: "set null" }),
   reference: varchar("reference", { length: 128 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -533,6 +542,7 @@ export const expenses = pgTable("expenses", {
 
 export const expensesRelations = relations(expenses, ({ one }) => ({
   supplier: one(suppliers, { fields: [expenses.supplierId], references: [suppliers.id] }),
+  account: one(accounts, { fields: [expenses.accountId], references: [accounts.id] }),
 }));
 
 // ---------- HR: contracts & leave ----------
@@ -723,3 +733,36 @@ export const auditLogs = pgTable("audit_logs", {
   detail: text("detail"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ---------- Accounting: chart of accounts & bank accounts ----------
+// The ledger is built by consolidating the app's sub-ledgers (invoices,
+// payments, expenses, payroll, purchase orders, assets) into this chart of
+// accounts. Accounts marked `isSystem` are driven automatically by those
+// sub-ledgers; the rest can be picked when tagging expenses.
+
+export const accounts = pgTable("accounts", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 16 }).notNull().unique(),
+  name: varchar("name", { length: 128 }).notNull(),
+  type: accountTypeEnum("type").notNull(),
+  description: text("description"),
+  isSystem: boolean("is_system").default(false).notNull(),
+  active: boolean("active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const bankAccounts = pgTable("bank_accounts", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  bankName: varchar("bank_name", { length: 128 }),
+  accountNumber: varchar("account_number", { length: 64 }),
+  openingBalance: numeric("opening_balance", { precision: 14, scale: 2 }).default("0").notNull(),
+  active: boolean("active").default(true).notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const accountsRelations = relations(accounts, ({ many }) => ({
+  expenses: many(expenses),
+}));

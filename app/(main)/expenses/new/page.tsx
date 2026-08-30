@@ -2,6 +2,7 @@ import { createExpense } from "@/lib/actions/expenses";
 import { db } from "@/db";
 import { suppliers } from "@/db/schema";
 import { getSettings } from "@/lib/numbering";
+import { getExpenseAccounts } from "@/lib/ledger";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function NewExpensePage() {
   const settings = await getSettings();
   const supplierRows = await db.select().from(suppliers).orderBy(suppliers.name);
+  const accountRows = await getExpenseAccounts();
 
   return (
     <div>
@@ -27,6 +29,16 @@ export default async function NewExpensePage() {
             </Field>
             <Field label="Category">
               <input name="category" className={inputClass} placeholder="e.g. Materials, Fuel, Rent, Wages" />
+            </Field>
+            <Field label="Chart account">
+              <select name="accountId" className={inputClass} defaultValue="">
+                <option value="">— Auto (from category) —</option>
+                {accountRows.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.code} {a.name}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Supplier">
               <select name="supplierId" className={inputClass}>

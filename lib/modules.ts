@@ -170,6 +170,14 @@ export const MODULES: readonly ModuleDef[] = [
     built: true,
   },
   {
+    key: "accounting",
+    label: "Accounting",
+    description: "Chart of accounts, trial balance, income statement and balance sheet.",
+    href: "/accounting",
+    routePrefix: "/accounting",
+    built: true,
+  },
+  {
     key: "notifications",
     label: "Notifications",
     description: "In-app alerts for overdue items and job milestones.",

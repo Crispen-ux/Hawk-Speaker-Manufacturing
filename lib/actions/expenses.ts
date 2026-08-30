@@ -21,6 +21,7 @@ export async function createExpense(formData: FormData) {
       category: String(formData.get("category") ?? "") || null,
       paymentMethod: String(formData.get("paymentMethod") ?? "") || null,
       supplierId: Number(formData.get("supplierId")) || null,
+      accountId: Number(formData.get("accountId")) || null,
       reference: String(formData.get("reference") ?? "") || null,
       notes: String(formData.get("notes") ?? "") || null,
     })
@@ -49,6 +50,7 @@ export async function updateExpense(id: number, formData: FormData) {
       category: String(formData.get("category") ?? "") || null,
       paymentMethod: String(formData.get("paymentMethod") ?? "") || null,
       supplierId: Number(formData.get("supplierId")) || null,
+      accountId: Number(formData.get("accountId")) || null,
       reference: String(formData.get("reference") ?? "") || null,
       notes: String(formData.get("notes") ?? "") || null,
     })

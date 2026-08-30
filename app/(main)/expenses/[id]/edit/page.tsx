@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { expenses, suppliers } from "@/db/schema";
 import { updateExpense } from "@/lib/actions/expenses";
 import { getSettings } from "@/lib/numbering";
+import { getExpenseAccounts } from "@/lib/ledger";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
   const [expense] = await db.select().from(expenses).where(eq(expenses.id, expenseId));
   if (!expense) notFound();
   const supplierRows = await db.select().from(suppliers).orderBy(suppliers.name);
+  const accountRows = await getExpenseAccounts();
   const update = updateExpense.bind(null, expenseId);
 
   return (
@@ -34,6 +36,16 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
             </Field>
             <Field label="Category">
               <input name="category" defaultValue={expense.category ?? ""} className={inputClass} />
+            </Field>
+            <Field label="Chart account">
+              <select name="accountId" defaultValue={expense.accountId ?? ""} className={inputClass}>
+                <option value="">— Auto (from category) —</option>
+                {accountRows.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.code} {a.name}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Supplier">
               <select name="supplierId" defaultValue={expense.supplierId ?? ""} className={inputClass}>
