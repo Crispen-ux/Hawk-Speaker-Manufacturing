@@ -69,6 +69,8 @@ export const accountTypeEnum = pgEnum("account_type", [
   "expense",
 ]);
 
+export const journalEntryKindEnum = pgEnum("journal_entry_kind", ["manual", "opening"]);
+
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 256 }).notNull(),
@@ -254,6 +256,8 @@ export const settings = pgTable("settings", {
   nextDeliveryNoteNumber: integer("next_delivery_note_number").default(1).notNull(),
   nextCreditNoteNumber: integer("next_credit_note_number").default(1).notNull(),
   nextReceiptNumber: integer("next_receipt_number").default(1).notNull(),
+  journalPrefix: varchar("journal_prefix", { length: 16 }).default("JE-").notNull(),
+  nextJournalNumber: integer("next_journal_number").default(1).notNull(),
   emailTemplates: text("email_templates"),
   whatsappTemplates: text("whatsapp_templates"),
 });
@@ -765,4 +769,49 @@ export const bankAccounts = pgTable("bank_accounts", {
 
 export const accountsRelations = relations(accounts, ({ many }) => ({
   expenses: many(expenses),
+  journalLines: many(journalLines),
+}));
+
+// ---------- General journal ----------
+// Manual double-entry postings that the app's sub-ledgers don't cover (owner
+// drawings/contributions, corrections, depreciation). `opening` entries carry
+// opening balances and are always included in the ledger regardless of date;
+// every entry must post equal debits and credits.
+
+export const journalEntries = pgTable("journal_entries", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 64 }).notNull().unique(),
+  date: date("date").notNull(),
+  kind: journalEntryKindEnum("kind").default("manual").notNull(),
+  memo: varchar("memo", { length: 256 }).notNull(),
+  reference: varchar("reference", { length: 128 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const journalLines = pgTable("journal_lines", {
+  id: serial("id").primaryKey(),
+  journalEntryId: integer("journal_entry_id")
+    .references(() => journalEntries.id, { onDelete: "cascade" })
+    .notNull(),
+  accountId: integer("account_id")
+    .references(() => accounts.id, { onDelete: "restrict" })
+    .notNull(),
+  debit: numeric("debit", { precision: 14, scale: 2 }).default("0").notNull(),
+  credit: numeric("credit", { precision: 14, scale: 2 }).default("0").notNull(),
+  memo: varchar("memo", { length: 256 }),
+});
+
+export const journalEntriesRelations = relations(journalEntries, ({ many }) => ({
+  lines: many(journalLines),
+}));
+
+export const journalLinesRelations = relations(journalLines, ({ one }) => ({
+  entry: one(journalEntries, {
+    fields: [journalLines.journalEntryId],
+    references: [journalEntries.id],
+  }),
+  account: one(accounts, {
+    fields: [journalLines.accountId],
+    references: [accounts.id],
+  }),
 }));

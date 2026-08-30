@@ -16,7 +16,8 @@ type NumberField =
   | "nextJobCardNumber"
   | "nextDeliveryNoteNumber"
   | "nextCreditNoteNumber"
-  | "nextReceiptNumber";
+  | "nextReceiptNumber"
+  | "nextJournalNumber";
 type PrefixField =
   | "invoicePrefix"
   | "quotationPrefix"
@@ -24,7 +25,8 @@ type PrefixField =
   | "jobCardPrefix"
   | "deliveryNotePrefix"
   | "creditNotePrefix"
-  | "receiptPrefix";
+  | "receiptPrefix"
+  | "journalPrefix";
 
 async function nextNumber(numberField: NumberField, prefixField: PrefixField) {
   await ensureSettingsRow();
@@ -45,6 +47,7 @@ export const nextJobCardNumber = () => nextNumber("nextJobCardNumber", "jobCardP
 export const nextDeliveryNoteNumber = () => nextNumber("nextDeliveryNoteNumber", "deliveryNotePrefix");
 export const nextCreditNoteNumber = () => nextNumber("nextCreditNoteNumber", "creditNotePrefix");
 export const nextReceiptNumber = () => nextNumber("nextReceiptNumber", "receiptPrefix");
+export const nextJournalNumber = () => nextNumber("nextJournalNumber", "journalPrefix");
 
 export async function getSettings() {
   await ensureSettingsRow();

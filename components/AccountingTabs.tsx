@@ -7,6 +7,7 @@ const links = [
   { href: "/accounting/trial-balance", label: "Trial balance" },
   { href: "/accounting/income-statement", label: "Income statement" },
   { href: "/accounting/balance-sheet", label: "Balance sheet" },
+  { href: "/accounting/journal", label: "General journal" },
 ];
 
 export default function AccountingTabs() {

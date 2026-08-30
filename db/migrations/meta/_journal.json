@@ -50,6 +50,13 @@
       "when": 1788067706077,
       "tag": "0006_white_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788091620038,
+      "tag": "0007_funny_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

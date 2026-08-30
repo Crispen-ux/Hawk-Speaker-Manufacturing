@@ -143,6 +143,7 @@ export async function computeLedger(asOf?: string): Promise<LedgerResult> {
     runRows,
     assetRows,
     catRows,
+    jeRows,
   ] = await Promise.all([
     db.select().from(accounts),
     db.select().from(bankAccounts),
@@ -153,6 +154,7 @@ export async function computeLedger(asOf?: string): Promise<LedgerResult> {
     db.query.payrollRuns.findMany({ with: { entries: true } }),
     db.select().from(assets),
     db.query.catalogItems.findMany({ with: { movements: true } }),
+    db.query.journalEntries.findMany({ with: { lines: true } }),
   ]);
 
   const operatingId = accountRows.find((a) => a.code === "5100")?.id;
@@ -270,10 +272,38 @@ export async function computeLedger(asOf?: string): Promise<LedgerResult> {
     put(code, name, "expense", acc?.isSystem ?? false, amt, "expenses");
   }
 
+  // Manual general-journal postings. `opening` entries carry opening balances
+  // and are always included (they post at the very start of the books);
+  // `manual` entries only count on or before the as-of date.
+  const accountById = new Map(accountRows.map((a) => [a.id, a]));
+  const capitalId = accountRows.find((a) => a.code === "3000")?.id;
+  const jeSignedById = new Map<number, number>();
+  let jeCapitalSigned = 0;
+  for (const je of jeRows) {
+    const isOpening = je.kind === "opening";
+    if (!isOpening && !le(je.date, asOf)) continue;
+    for (const ln of je.lines) {
+      const signed = toNumber(ln.debit) - toNumber(ln.credit);
+      if (signed === 0) continue;
+      jeSignedById.set(ln.accountId, (jeSignedById.get(ln.accountId) ?? 0) + signed);
+      if (capitalId && ln.accountId === capitalId) jeCapitalSigned += signed;
+    }
+  }
+  for (const [accId, signed] of jeSignedById) {
+    const acc = accountById.get(accId);
+    if (!acc) continue;
+    if (capitalId && accId === capitalId) continue; // posted by the capital row below
+    put(acc.code, acc.name, acc.type, acc.isSystem, signed, "journal");
+  }
+
   const rows = Array.from(signedRows.values()).sort((a, b) => a.code.localeCompare(b.code));
   const totalSigned = rows.reduce((s, r) => s + r.signed, 0);
-  const capital = -totalSigned; // balancing figure — absorbs opening balances
-  put("3000", "Owner's capital", "equity", true, capital, "opening equity");
+  // Owner's capital comes only from manual journal postings (opening balances,
+  // contributions, drawings). The residual — unbalanced system estimates such
+  // as stock-on-hand and the asset register — lands in retained earnings.
+  const capital = jeCapitalSigned;
+  put("3000", "Owner's capital", "equity", true, capital, "journal");
+  put("3100", "Retained earnings", "equity", true, -(totalSigned + capital), "balancing figure");
 
   const ordered = Array.from(signedRows.values()).sort((a, b) => a.code.localeCompare(b.code));
   const assetTotal = ordered.filter((r) => r.type === "asset").reduce((s, r) => s + r.signed, 0);
@@ -315,12 +345,13 @@ export type IncomeStatement = {
 
 export async function getIncomeStatement(from: string, to: string): Promise<IncomeStatement> {
   await ensureLedgerSeed();
-  const [invRows, cnRows, expenseRows, runRows, accountRows] = await Promise.all([
+  const [invRows, cnRows, expenseRows, runRows, accountRows, jeRows] = await Promise.all([
     db.query.invoices.findMany({ with: { items: true } }),
     db.query.creditNotes.findMany({ with: { items: true } }),
     db.select().from(expenses),
     db.query.payrollRuns.findMany({ with: { entries: true } }),
     db.select().from(accounts),
+    db.query.journalEntries.findMany({ with: { lines: true } }),
   ]);
 
   const inRange = (d?: string | Date | null) => !!d && String(d).slice(0, 10) >= from && String(d).slice(0, 10) <= to;
@@ -356,7 +387,6 @@ export async function getIncomeStatement(from: string, to: string): Promise<Inco
   const wagesAccount = accountRows.find((a) => a.code === "5000");
   if (wagesAccount) expensesById.set(wagesAccount.id, (expensesById.get(wagesAccount.id) ?? 0) + wages);
 
-  const revenueLines: ProfitLine[] = [{ label: "Sales & services", amount: revenue, code: "4000", kind: "revenue" }];
   const expenseLines: ProfitLine[] = [];
   const expenseAccountMap = new Map(accountRows.filter((a) => a.type === "expense").map((a) => [a.id, a]));
   for (const [accId, amt] of expensesById) {
@@ -370,9 +400,44 @@ export async function getIncomeStatement(from: string, to: string): Promise<Inco
   }
   expenseLines.sort((a, b) => (a.code ?? "999").localeCompare(b.code ?? "999"));
 
-  const revenueTotal = revenueLines.reduce((s, l) => s + l.amount, 0);
+  // Manual journal entries drive additional revenue/expense in the period
+  // (e.g. depreciation or an owner-corrected income posting). Opening-balance
+  // entries never touch the P&L.
+  const accountById = new Map(accountRows.map((a) => [a.id, a]));
+  const incomeById = new Map<string, { label: string; amount: number }>();
+  incomeById.set("4000", { label: "Sales & services", amount: revenue });
+  for (const je of jeRows) {
+    if (je.kind !== "manual") continue;
+    if (!inRange(je.date)) continue;
+    for (const ln of je.lines) {
+      const acc = accountById.get(ln.accountId);
+      if (!acc) continue;
+      const signed = toNumber(ln.debit) - toNumber(ln.credit);
+      if (signed === 0) continue;
+      if (acc.type === "income") {
+        const cur = incomeById.get(acc.code) ?? { label: acc.name, amount: 0 };
+        cur.amount += -signed;
+        incomeById.set(acc.code, cur);
+      } else if (acc.type === "expense") {
+        const cur = expenseAccountMap.get(acc.id);
+        const line = expenseLines.find((l) => l.code === cur?.code) ?? (() => {
+          const n = { label: cur?.name ?? acc.name, amount: 0, code: cur?.code ?? acc.code, kind: "expense" as const };
+          expenseLines.push(n);
+          return n;
+        })();
+        line.amount += signed;
+      }
+    }
+  }
+  const revenueLinesMerged: ProfitLine[] = Array.from(incomeById.entries())
+    .filter(([, v]) => Math.abs(v.amount) >= 0.01)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([code, v]) => ({ label: v.label, amount: v.amount, code, kind: "revenue" as const }));
+  expenseLines.sort((a, b) => (a.code ?? "999").localeCompare(b.code ?? "999"));
+
+  const revenueTotal = revenueLinesMerged.reduce((s, l) => s + l.amount, 0);
   const expenseTotal = expenseLines.reduce((s, l) => s + l.amount, 0);
-  return { from, to, revenue: revenueLines, expenses: expenseLines, revenueTotal, expenseTotal, netProfit: revenueTotal - expenseTotal };
+  return { from, to, revenue: revenueLinesMerged, expenses: expenseLines, revenueTotal, expenseTotal, netProfit: revenueTotal - expenseTotal };
 }
 
 // ---------- Balance sheet (as of) ----------
@@ -422,29 +487,31 @@ export async function getBalanceSheet(asOf: string): Promise<BalanceSheet> {
     }
   }
 
-  // Equity is shown credit-positive: capital is the signed balancing figure
-  // (debit-positive), so display it as −capital; retained earnings is netProfit.
-  const capital = l.capital;
-  const retained = l.netProfit;
+  const totalAssets = assets.reduce((s, x) => s + x.amount, 0);
+  const totalLiabilities = liabilities.reduce((s, x) => s + x.amount, 0);
+  const totalEquity = totalAssets - totalLiabilities; // balancing identity: A = L + E
+
+  // Equity is shown credit-positive. Owner's capital comes only from manual
+  // journal postings (opening balances, contributions, drawings); retained
+  // earnings absorbs everything else (period profit, prior-year balances, and
+  // any residual the sub-ledgers can't explain), so the sections always agree.
+  const capitalDisplay = -l.capital;
+  const retained = totalEquity - capitalDisplay;
   const equity: BsLine[] = [];
-  if (capital !== 0) {
+  if (Math.abs(capitalDisplay) >= 0.01) {
     equity.push({
-      label: capital < 0 ? "Owner's capital" : "Drawings / capital deficit",
-      amount: -capital,
+      label: capitalDisplay > 0 ? "Owner's capital" : "Drawings / capital deficit",
+      amount: capitalDisplay,
       code: "3000",
     });
   }
-  if (retained !== 0) {
+  if (Math.abs(retained) >= 0.01) {
     equity.push({
       label: retained > 0 ? "Retained earnings" : "Accumulated loss",
       amount: retained,
       code: "3100",
     });
   }
-
-  const totalAssets = assets.reduce((s, x) => s + x.amount, 0);
-  const totalLiabilities = liabilities.reduce((s, x) => s + x.amount, 0);
-  const totalEquity = totalAssets - totalLiabilities; // balancing plug: A = L + E
 
   return { asOf, assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity };
 }
