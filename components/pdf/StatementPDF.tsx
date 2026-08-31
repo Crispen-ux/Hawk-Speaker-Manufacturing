@@ -30,12 +30,12 @@ const styles = StyleSheet.create({
   },
   docTitle: { fontSize: 22, fontFamily: "Helvetica-Bold", color: "#0E2A47" },
   companyBlock: { alignItems: "flex-end", maxWidth: 240 },
+  logoWrap: { flexDirection: "row", justifyContent: "flex-end", marginRight: -10 },
   logo: {
     maxWidth: 110,
     maxHeight: 32,
     marginBottom: 7,
     objectFit: "contain",
-    marginRight: -10,
   },
   companyName: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 2, color: "#0E2A47" },
   small: { fontSize: 9, color: "#5B6472", textAlign: "right" },
@@ -147,7 +147,7 @@ export default function StatementPDF({
             <Text style={styles.docTitle}>{client.name}</Text>
           </View>
           <View style={styles.companyBlock}>
-            {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
+            {company.logoData ? <View style={styles.logoWrap}><Image style={styles.logo} src={company.logoData} /></View> : null}
             <Text style={styles.companyName}>{company.companyName}</Text>
             {company.registrationNumber ? (
               <Text style={styles.small}>Reg: {company.registrationNumber}</Text>

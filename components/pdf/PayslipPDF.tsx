@@ -51,12 +51,16 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     maxWidth: 240,
   },
+  logoWrap: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginRight: -10,
+  },
   logo: {
     maxWidth: 110,
     maxHeight: 32,
     marginBottom: 7,
     objectFit: "contain",
-    marginRight: -10,
   },
   companyName: {
     fontFamily: "Helvetica-Bold",
@@ -213,7 +217,7 @@ export default function PayslipPDF({
             <Text style={styles.stamp}>{status === "paid" ? "Paid" : "Draft"}</Text>
           </View>
           <View style={styles.companyBlock}>
-            {company.logoData ? <Image style={styles.logo} src={company.logoData} /> : null}
+            {company.logoData ? <View style={styles.logoWrap}><Image style={styles.logo} src={company.logoData} /></View> : null}
             <Text style={styles.companyName}>{company.companyName}</Text>
             {company.registrationNumber ? (
               <Text style={styles.small}>Reg: {company.registrationNumber}</Text>
