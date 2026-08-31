@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     maxHeight: 32,
     marginBottom: 7,
     objectFit: "contain",
-    marginLeft: 10,
+    marginRight: -10,
   },
   companyName: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 2, color: "#0E2A47" },
   small: { fontSize: 9, color: "#5B6472", textAlign: "right" },
