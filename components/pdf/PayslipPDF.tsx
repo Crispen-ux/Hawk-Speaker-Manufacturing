@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
     maxHeight: 32,
     marginBottom: 7,
     objectFit: "contain",
+    marginLeft: 10,
   },
   companyName: {
     fontFamily: "Helvetica-Bold",

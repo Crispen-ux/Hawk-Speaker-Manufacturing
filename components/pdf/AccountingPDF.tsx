@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   docTitle: { fontSize: 22, fontFamily: "Helvetica-Bold", color: "#0E2A47" },
   meta: { fontSize: 9.5, color: "#5B6472", marginTop: 4 },
   companyBlock: { alignItems: "flex-end", maxWidth: 240 },
-  logo: { maxWidth: 110, maxHeight: 32, marginBottom: 7, objectFit: "contain" },
+  logo: { maxWidth: 110, maxHeight: 32, marginBottom: 7, objectFit: "contain", marginLeft: 10 },
   companyName: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 2, color: "#0E2A47" },
   small: { fontSize: 9, color: "#5B6472", textAlign: "right" },
   table: { marginTop: 4 },
