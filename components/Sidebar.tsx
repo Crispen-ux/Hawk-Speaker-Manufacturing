@@ -33,9 +33,19 @@ import {
   Coins,
   BarChart3,
   Landmark,
+  UserCog,
 } from "lucide-react";
 
-const links = [
+type NavLink = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  module: string;
+  alwaysOn?: boolean;
+  adminOnly?: boolean;
+};
+
+const links: NavLink[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, module: "dashboard", alwaysOn: true },
   { href: "/invoices", label: "Invoices", icon: FileText, module: "invoices" },
   { href: "/quotations", label: "Quotations", icon: FileSignature, module: "quotations" },
@@ -61,7 +71,8 @@ const links = [
   { href: "/accounting", label: "Accounting", icon: Landmark, module: "accounting" },
   { href: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
   { href: "/audit", label: "Audit log", icon: ScrollText, module: "auditLogs" },
-  { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true },
+  { href: "/users", label: "Users", icon: UserCog, module: "users", adminOnly: true },
+  { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true, adminOnly: true },
 ];
 
 function SidebarContent({
@@ -69,6 +80,7 @@ function SidebarContent({
   name,
   pathname,
   disabledKeys,
+  role,
   onNavigate,
   onLogout,
 }: {
@@ -76,10 +88,14 @@ function SidebarContent({
   name: string;
   pathname: string;
   disabledKeys?: string[];
+  role?: "admin" | "staff";
   onNavigate?: () => void;
   onLogout: () => void;
 }) {
-  const visible = links.filter((l) => l.alwaysOn || !(disabledKeys ?? []).includes(l.module));
+  const visible = links.filter(
+    (l) =>
+      (l.alwaysOn || !(disabledKeys ?? []).includes(l.module)) && (!l.adminOnly || role === "admin")
+  );
   return (
     <div className="flex h-full w-64 flex-col bg-navy text-paper">
       <div className="border-b border-white/10 px-6 py-7">
@@ -127,10 +143,12 @@ export default function Sidebar({
   logoData,
   companyName,
   disabledKeys = [],
+  role,
 }: {
   logoData?: string | null;
   companyName?: string;
   disabledKeys?: string[];
+  role?: "admin" | "staff";
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -162,7 +180,7 @@ export default function Sidebar({
     <>
       {/* Desktop rail: pinned to the viewport height, independent of page scroll length */}
       <aside className="sticky top-0 hidden h-dvh shrink-0 md:block">
-        <SidebarContent logoSrc={logoSrc} name={name} pathname={pathname} disabledKeys={disabledKeys} onLogout={logout} />
+        <SidebarContent logoSrc={logoSrc} name={name} pathname={pathname} disabledKeys={disabledKeys} role={role} onLogout={logout} />
       </aside>
 
       {/* Mobile top bar */}
@@ -204,6 +222,7 @@ export default function Sidebar({
                   name={name}
                   pathname={pathname}
                   disabledKeys={disabledKeys}
+                  role={role}
                   onNavigate={() => setOpen(false)}
                   onLogout={logout}
                 />

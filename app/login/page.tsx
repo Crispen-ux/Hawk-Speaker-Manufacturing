@@ -2,10 +2,12 @@
 
 import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,14 +30,14 @@ function LoginForm() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ email, password }),
     });
     setLoading(false);
     if (res.ok) {
       router.push(params.get("next") || "/");
       router.refresh();
     } else {
-      setError("That password isn't right.");
+      setError("That email or password isn't right.");
     }
   }
 
@@ -56,10 +58,20 @@ function LoginForm() {
           className="rounded-lg border border-white/10 bg-navy-2 p-7 shadow-2xl"
         >
           <label className="mb-2 block font-mono text-[11px] uppercase tracking-[0.15em] text-paper/60">
-            Password
+            Email
           </label>
           <input
             autoFocus
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-md border border-white/15 bg-navy px-3 py-2.5 text-paper outline-none focus:border-forest-2"
+            placeholder="you@company.com"
+          />
+          <label className="mt-4 mb-2 block font-mono text-[11px] uppercase tracking-[0.15em] text-paper/60">
+            Password
+          </label>
+          <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -72,8 +84,13 @@ function LoginForm() {
             disabled={loading}
             className="mt-5 w-full rounded-md bg-forest-2 py-2.5 text-sm font-semibold text-navy transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Checking…" : "Sign in"}
+            {loading ? "Signing in…" : "Sign in"}
           </button>
+          <div className="mt-4 text-center">
+            <Link href="/forgot-password" className="text-xs text-paper/50 hover:text-paper/80">
+              Forgot your password?
+            </Link>
+          </div>
         </form>
       </div>
     </div>
