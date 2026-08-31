@@ -19,6 +19,14 @@ export default function NewClientPage() {
           <Field label="Billing address">
             <textarea name="address" rows={3} className={inputClass} />
           </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Company registration">
+              <input name="registrationNumber" className={inputClass} placeholder="e.g. 2020/123456/07" />
+            </Field>
+            <Field label="VAT number">
+              <input name="vatNumber" className={inputClass} placeholder="e.g. 4112345678" />
+            </Field>
+          </div>
           <Field label="Notes">
             <textarea name="notes" rows={2} className={inputClass} />
           </Field>

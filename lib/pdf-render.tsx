@@ -12,7 +12,7 @@ export async function renderPayslipPDFBuffer(props: PayslipPDFProps) {
 }
 
 export async function renderStatementPDFBuffer(props: {
-  client: { name: string; email?: string | null; address?: string | null };
+  client: { name: string; email?: string | null; address?: string | null; registrationNumber?: string | null; vatNumber?: string | null };
   fromDate: string;
   toDate: string;
   rows: StatementRow[];

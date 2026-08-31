@@ -77,6 +77,8 @@ export const clients = pgTable("clients", {
   email: varchar("email", { length: 256 }),
   phone: varchar("phone", { length: 64 }),
   address: text("address"),
+  registrationNumber: varchar("registration_number", { length: 64 }),
+  vatNumber: varchar("vat_number", { length: 64 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -354,6 +356,8 @@ export const suppliers = pgTable("suppliers", {
   email: varchar("email", { length: 256 }),
   phone: varchar("phone", { length: 64 }),
   address: text("address"),
+  registrationNumber: varchar("registration_number", { length: 64 }),
+  vatNumber: varchar("vat_number", { length: 64 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

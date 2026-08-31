@@ -117,7 +117,7 @@ export default function StatementPDF({
   rows,
   company,
 }: {
-  client: { name: string; email?: string | null; address?: string | null };
+  client: { name: string; email?: string | null; address?: string | null; registrationNumber?: string | null; vatNumber?: string | null };
   fromDate: string;
   toDate: string;
   rows: StatementRow[];
@@ -168,6 +168,8 @@ export default function StatementPDF({
           </View>
           <View style={styles.metaBlock}>
             <Text style={styles.metaLabel}>Client</Text>
+            {client.registrationNumber ? <Text style={styles.metaValue}>Reg: {client.registrationNumber}</Text> : null}
+            {client.vatNumber ? <Text style={styles.metaValue}>VAT: {client.vatNumber}</Text> : null}
             {client.email ? <Text style={styles.metaValue}>{client.email}</Text> : null}
             {client.address ? <Text style={styles.metaValue}>{client.address}</Text> : null}
           </View>

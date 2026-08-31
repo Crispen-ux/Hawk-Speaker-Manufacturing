@@ -51,6 +51,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             <Field label="Billing address">
               <textarea name="address" defaultValue={client.address ?? ""} rows={3} className={inputClass} />
             </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Company registration">
+                <input name="registrationNumber" defaultValue={client.registrationNumber ?? ""} className={inputClass} />
+              </Field>
+              <Field label="VAT number">
+                <input name="vatNumber" defaultValue={client.vatNumber ?? ""} className={inputClass} />
+              </Field>
+            </div>
             <Field label="Notes">
               <textarea name="notes" defaultValue={client.notes ?? ""} rows={2} className={inputClass} />
             </Field>

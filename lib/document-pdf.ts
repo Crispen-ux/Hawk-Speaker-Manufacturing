@@ -44,6 +44,8 @@ export async function renderInvoicePdf(invoiceId: number): Promise<SharedPDF> {
       name: invoice.client?.name ?? "",
       email: invoice.client?.email,
       address: invoice.client?.address,
+      registrationNumber: invoice.client?.registrationNumber,
+      vatNumber: invoice.client?.vatNumber,
     },
     items: invoice.items,
     taxRate: invoice.taxRate,
@@ -79,6 +81,8 @@ export async function renderQuotationPdf(quotationId: number): Promise<SharedPDF
       name: quotation.client?.name ?? "",
       email: quotation.client?.email,
       address: quotation.client?.address,
+      registrationNumber: quotation.client?.registrationNumber,
+      vatNumber: quotation.client?.vatNumber,
     },
     items: quotation.items,
     taxRate: quotation.taxRate,
@@ -119,6 +123,8 @@ export async function renderDeliveryNotePdf(dnId: number): Promise<SharedPDF> {
       name: dn.client?.name ?? "",
       email: dn.client?.email,
       address: dn.client?.address,
+      registrationNumber: dn.client?.registrationNumber,
+      vatNumber: dn.client?.vatNumber,
     },
     extraMeta,
     items: dn.items.map((it) => ({ description: it.description, quantity: it.quantity, unitPrice: "0" })),
@@ -159,6 +165,8 @@ export async function renderJobCardPdf(jobId: number): Promise<SharedPDF> {
       name: job.client?.name ?? "",
       email: job.client?.email,
       address: job.client?.address,
+      registrationNumber: job.client?.registrationNumber,
+      vatNumber: job.client?.vatNumber,
     },
     extraMeta,
     items: job.items,
@@ -193,6 +201,8 @@ export async function renderCreditNotePdf(creditNoteId: number): Promise<SharedP
       name: cn.client?.name ?? "",
       email: cn.client?.email,
       address: cn.client?.address,
+      registrationNumber: cn.client?.registrationNumber,
+      vatNumber: cn.client?.vatNumber,
     },
     items: cn.items,
     taxRate: cn.taxRate,
@@ -225,6 +235,8 @@ export async function renderReceiptPdf(receiptId: number): Promise<SharedPDF> {
       name: receipt.client?.name ?? "",
       email: receipt.client?.email,
       address: receipt.client?.address,
+      registrationNumber: receipt.client?.registrationNumber,
+      vatNumber: receipt.client?.vatNumber,
     },
     extraMeta: [
       receipt.invoice ? { label: "Against invoice", value: receipt.invoice.number } : null,
@@ -250,6 +262,7 @@ export async function renderExpensePdf(expenseId: number): Promise<SharedPDF> {
   if (!expense) notFound();
 
   const settings = await getSettings();
+  const supplier = await supplierName(expense.supplierId);
   const buffer = await renderDocPDFBuffer({
     kind: "Expense",
     number: String(expense.id),
@@ -259,7 +272,11 @@ export async function renderExpensePdf(expenseId: number): Promise<SharedPDF> {
     dueOrExpiryDate: expense.paymentMethod ?? "",
     partyLabel: "Supplier",
     client: {
-      name: (await supplierName(expense.supplierId)) ?? "",
+      name: supplier?.name ?? "",
+      email: supplier?.email,
+      address: supplier?.address,
+      registrationNumber: supplier?.registrationNumber,
+      vatNumber: supplier?.vatNumber,
     },
     items: [{ description: expense.description, quantity: "1", unitPrice: expense.amount }],
     taxRate: "0",
@@ -271,10 +288,17 @@ export async function renderExpensePdf(expenseId: number): Promise<SharedPDF> {
   return { buffer: Buffer.from(buffer), filename: `expense-${expense.id}.pdf`, title: `Expense ${expense.id}` };
 }
 
-async function supplierName(supplierId: number | null): Promise<string | undefined> {
+async function supplierName(supplierId: number | null): Promise<{ name: string; email?: string | null; address?: string | null; registrationNumber?: string | null; vatNumber?: string | null } | undefined> {
   if (!supplierId) return undefined;
   const [row] = await db.select().from(suppliers).where(eq(suppliers.id, supplierId));
-  return row?.name;
+  if (!row) return undefined;
+  return {
+    name: row.name,
+    email: row.email,
+    address: row.address,
+    registrationNumber: row.registrationNumber,
+    vatNumber: row.vatNumber,
+  };
 }
 
 /** Renders the statement PDF for a client over a date range. */
@@ -300,7 +324,13 @@ export async function renderStatementPdf(
   });
 
   const buffer = await renderStatementPDFBuffer({
-    client: { name: client.name, email: client.email, address: client.address },
+    client: {
+      name: client.name,
+      email: client.email,
+      address: client.address,
+      registrationNumber: client.registrationNumber,
+      vatNumber: client.vatNumber,
+    },
     fromDate,
     toDate,
     rows: statementRows,

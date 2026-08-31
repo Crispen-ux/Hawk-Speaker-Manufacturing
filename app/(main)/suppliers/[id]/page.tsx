@@ -45,6 +45,14 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
             <Field label="Address">
               <textarea name="address" defaultValue={supplier.address ?? ""} rows={3} className={inputClass} />
             </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Company registration">
+                <input name="registrationNumber" defaultValue={supplier.registrationNumber ?? ""} className={inputClass} />
+              </Field>
+              <Field label="VAT number">
+                <input name="vatNumber" defaultValue={supplier.vatNumber ?? ""} className={inputClass} />
+              </Field>
+            </div>
             <Field label="Notes">
               <textarea name="notes" defaultValue={supplier.notes ?? ""} rows={2} className={inputClass} />
             </Field>

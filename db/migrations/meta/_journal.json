@@ -64,6 +64,13 @@
       "when": 1788209747206,
       "tag": "0008_secret_dazzler",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788217778006,
+      "tag": "0009_loving_revanche",
+      "breakpoints": true
     }
   ]
 }

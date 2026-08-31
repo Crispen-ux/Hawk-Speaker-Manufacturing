@@ -189,7 +189,7 @@ export type DocPDFProps = {
   dueOrExpiryDate: string;
   /** Label for the counterparty block — defaults to "Billed to" */
   partyLabel?: string;
-  client: { name: string; email?: string | null; address?: string | null };
+  client: { name: string; email?: string | null; address?: string | null; registrationNumber?: string | null; vatNumber?: string | null };
   items: Item[];
   taxRate: string;
   discount: string;
@@ -274,6 +274,8 @@ export default function DocPDF({
           <View style={styles.metaBlock}>
             <Text style={styles.metaLabel}>{partyLabel}</Text>
             <Text style={styles.metaValue}>{client.name}</Text>
+            {client.registrationNumber ? <Text style={styles.metaValue}>Reg: {client.registrationNumber}</Text> : null}
+            {client.vatNumber ? <Text style={styles.metaValue}>VAT: {client.vatNumber}</Text> : null}
             {client.email ? <Text style={styles.metaValue}>{client.email}</Text> : null}
             {client.address ? <Text style={styles.metaValue}>{client.address}</Text> : null}
             {extraMeta?.map((m, i) => (

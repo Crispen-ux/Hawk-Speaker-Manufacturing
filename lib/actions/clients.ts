@@ -18,6 +18,8 @@ export async function createClient(formData: FormData) {
       email: String(formData.get("email") ?? "") || null,
       phone: String(formData.get("phone") ?? "") || null,
       address: String(formData.get("address") ?? "") || null,
+      registrationNumber: String(formData.get("registrationNumber") ?? "") || null,
+      vatNumber: String(formData.get("vatNumber") ?? "") || null,
       notes: String(formData.get("notes") ?? "") || null,
     })
     .returning({ id: clients.id });
@@ -34,6 +36,8 @@ export async function updateClient(id: number, formData: FormData) {
       email: String(formData.get("email") ?? "") || null,
       phone: String(formData.get("phone") ?? "") || null,
       address: String(formData.get("address") ?? "") || null,
+      registrationNumber: String(formData.get("registrationNumber") ?? "") || null,
+      vatNumber: String(formData.get("vatNumber") ?? "") || null,
       notes: String(formData.get("notes") ?? "") || null,
     })
     .where(eq(clients.id, id));
