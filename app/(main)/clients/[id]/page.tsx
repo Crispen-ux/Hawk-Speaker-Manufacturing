@@ -1,13 +1,14 @@
 import { db } from "@/db";
-import { clients, invoices, quotations } from "@/db/schema";
+import { clients, invoices, quotations, portalUsers } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { updateClient, deleteClient } from "@/lib/actions/clients";
+import { updateClient, deleteClient, createPortalAccess, togglePortalAccess, resetPortalPassword, deletePortalAccess } from "@/lib/actions/clients";
 import { PageHeader, Field, inputClass, PrimaryButton, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import ConfirmForm from "@/components/ConfirmForm";
 import { formatDate } from "@/lib/money";
+import { getEnabledModules } from "@/lib/enabled-modules";
 
 export const dynamic = "force-dynamic";
 
@@ -29,8 +30,15 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     .where(eq(quotations.clientId, clientId))
     .orderBy(desc(quotations.createdAt));
 
+  const enabled = await getEnabledModules();
+  const portalOn = enabled["clientPortal"] !== false;
+  const portalUsersRows = portalOn
+    ? await db.select().from(portalUsers).where(eq(portalUsers.clientId, clientId)).orderBy(desc(portalUsers.createdAt))
+    : [];
+
   const updateWithId = updateClient.bind(null, clientId);
   const deleteWithId = deleteClient.bind(null, clientId);
+  const createAccess = createPortalAccess.bind(null, clientId);
 
   return (
     <div>
@@ -127,6 +135,76 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               </div>
             )}
           </div>
+
+          {portalOn && (
+            <div>
+              <h2 className="mb-3 font-display text-lg font-bold text-navy">Client portal access</h2>
+              <Card>
+                {portalUsersRows.length === 0 ? (
+                  <p className="mb-4 text-sm text-ink-soft">
+                    No portal logins yet. Create one below to let this client sign in and view their documents.
+                  </p>
+                ) : (
+                  <ul className="mb-5 divide-y divide-rule">
+                    {portalUsersRows.map((u) => (
+                      <li key={u.id} className="flex items-center justify-between gap-4 py-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-medium text-ink">{u.name || u.email}</p>
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${u.active ? "bg-emerald-50 text-emerald-700" : "bg-paper-dim text-ink-soft"}`}>
+                              {u.active ? "Active" : "Disabled"}
+                            </span>
+                          </div>
+                          <p className="truncate font-mono text-xs text-ink-soft">{u.email}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <form action={togglePortalAccess.bind(null, clientId, u.id)}>
+                            <input type="hidden" name="active" value={u.active ? "off" : "on"} />
+                            <button type="submit" className="text-xs font-medium text-ink hover:underline">
+                              {u.active ? "Disable" : "Enable"}
+                            </button>
+                          </form>
+                          <details className="relative">
+                            <summary className="cursor-pointer text-xs font-medium text-ink hover:underline">Reset</summary>
+                            <div className="absolute right-0 z-10 mt-2 w-64 rounded-md border border-rule bg-white p-3 shadow-lg">
+                              <form action={resetPortalPassword.bind(null, clientId, u.id)} className="space-y-2">
+                                <Field label="New password">
+                                  <input name="password" type="password" required minLength={8} className={inputClass} />
+                                </Field>
+                                <button type="submit" className="rounded-md bg-navy px-3 py-1.5 text-xs font-semibold text-paper hover:bg-navy-2">
+                                  Reset password
+                                </button>
+                              </form>
+                            </div>
+                          </details>
+                          <ConfirmForm action={deletePortalAccess.bind(null, clientId, u.id)} confirm="Revoke this client's portal access?" className="inline">
+                            <button type="submit" className="text-xs font-medium text-rust hover:underline">
+                              Revoke
+                            </button>
+                          </ConfirmForm>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <form action={createAccess} className="space-y-3 border-t border-rule pt-4">
+                  <p className="text-xs text-ink-soft">Add a client portal login:</p>
+                  <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                    <Field label="Name">
+                      <input name="name" className={inputClass} placeholder="Primary contact" />
+                    </Field>
+                    <Field label="Email (login)">
+                      <input name="email" type="email" required className={inputClass} placeholder="client@company.co.za" />
+                    </Field>
+                    <Field label="Password">
+                      <input name="password" type="password" required minLength={8} className={inputClass} placeholder="••••••••" />
+                    </Field>
+                  </div>
+                  <PrimaryButton type="submit">Create portal access</PrimaryButton>
+                </form>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>

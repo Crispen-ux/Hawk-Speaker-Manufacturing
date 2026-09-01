@@ -34,6 +34,7 @@ import {
   BarChart3,
   Landmark,
   UserCog,
+  Zap,
 } from "lucide-react";
 
 type NavLink = {
@@ -72,6 +73,7 @@ const links: NavLink[] = [
   { href: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
   { href: "/audit", label: "Audit log", icon: ScrollText, module: "auditLogs" },
   { href: "/users", label: "Users", icon: UserCog, module: "users", adminOnly: true },
+  { href: "/automation", label: "Automation", icon: Zap, module: "automation", adminOnly: true },
   { href: "/settings", label: "Settings", icon: SettingsIcon, module: "settings", alwaysOn: true, adminOnly: true },
 ];
 

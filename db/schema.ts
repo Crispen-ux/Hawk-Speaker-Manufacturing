@@ -98,6 +98,11 @@ export const invoices = pgTable("invoices", {
   paymentTerms: text("payment_terms"),
   lastSentAt: timestamp("last_sent_at"),
   recurringInvoiceId: integer("recurring_invoice_id"),
+  // The quotation (if any) this invoice was created from. Preserves the
+  // Quotation -> Invoice relationship end-to-end (source traceability).
+  sourceQuotationId: integer("source_quotation_id").references(() => quotations.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -213,8 +218,36 @@ export const quotations = pgTable("quotations", {
   paymentTerms: text("payment_terms"),
   lastSentAt: timestamp("last_sent_at"),
   convertedInvoiceId: integer("converted_invoice_id"),
+  // Portal approvals — recorded so the decision is tamper-evident and the
+  // workflow is idempotent (a quotation can only be approved/declined once).
+  approvedAt: timestamp("approved_at"),
+  declinedAt: timestamp("declined_at"),
+  declineReason: text("decline_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ---------- Client portal users ----------
+// A login belongs to one client (their organisation/contact). Portal users
+// authenticate with an email + password of their own and only ever see
+// documents scoped to their client — this is the tenant/isolation boundary.
+
+export const portalUsers = pgTable("portal_users", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .references(() => clients.id, { onDelete: "cascade" })
+    .notNull(),
+  email: varchar("email", { length: 254 }).notNull().unique(),
+  name: varchar("name", { length: 128 }),
+  passwordHash: text("password_hash").notNull(),
+  active: boolean("active").default(true).notNull(),
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const portalUsersRelations = relations(portalUsers, ({ one }) => ({
+  client: one(clients, { fields: [portalUsers.clientId], references: [clients.id] }),
+}));
 
 export const quotationItems = pgTable("quotation_items", {
   id: serial("id").primaryKey(),
@@ -707,6 +740,96 @@ export const modules = pgTable("modules", {
   key: varchar("key", { length: 64 }).primaryKey(),
   enabled: boolean("enabled").default(true).notNull(),
 });
+
+// ---------- Automation engine ----------
+// A modular workflow engine. An automation defines a trigger (a business
+// event) and a list of steps (actions). When the EventBus emits an event, the
+// automation engine evaluates each enabled automation whose trigger matches,
+// checks its conditions, then executes its steps in order, recording every
+// run and step so the whole lifecycle is auditable and retryable.
+
+export const automationStatusEnum = pgEnum("automation_status", ["run", "failed", "completed"]);
+
+export const automations = pgTable("automations", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: text("description"),
+  // The event that triggers this automation, e.g. "quotation.approved".
+  trigger: varchar("trigger", { length: 64 }).notNull(),
+  // JSON array of conditions, e.g. [{ field: "status", op: "eq", value: "accepted" }].
+  conditions: text("conditions"),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const automationsRelations = relations(automations, ({ many }) => ({
+  steps: many(automationSteps),
+}));
+
+export const automationSteps = pgTable("automation_steps", {
+  id: serial("id").primaryKey(),
+  automationId: integer("automation_id")
+    .references(() => automations.id, { onDelete: "cascade" })
+    .notNull(),
+  // The action type, e.g. "convertedToInvoice", "sendEmail", "sendWhatsApp", "notify".
+  action: varchar("action", { length: 64 }).notNull(),
+  // JSON config for the action (channel, template tokens, status, etc.).
+  config: text("config"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const automationStepsRelations = relations(automationSteps, ({ one }) => ({
+  automation: one(automations, {
+    fields: [automationSteps.automationId],
+    references: [automations.id],
+  }),
+}));
+
+// One row per automation execution (every time a matching event fires).
+export const automationRuns = pgTable("automation_runs", {
+  id: serial("id").primaryKey(),
+  automationId: integer("automation_id")
+    .references(() => automations.id, { onDelete: "cascade" })
+    .notNull(),
+  eventId: varchar("event_id", { length: 128 }),
+  trigger: varchar("trigger", { length: 64 }).notNull(),
+  entityType: varchar("entity_type", { length: 64 }),
+  entityId: integer("entity_id"),
+  entityNumber: varchar("entity_number", { length: 64 }),
+  status: automationStatusEnum("status").default("run").notNull(),
+  error: text("error"),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const automationRunsRelations = relations(automationRuns, ({ one, many }) => ({
+  automation: one(automations, {
+    fields: [automationRuns.automationId],
+    references: [automations.id],
+  }),
+  steps: many(automationRunSteps),
+}));
+
+// Per-step outcome within an automation run, for the execution log.
+export const automationRunSteps = pgTable("automation_run_steps", {
+  id: serial("id").primaryKey(),
+  runId: integer("run_id")
+    .references(() => automationRuns.id, { onDelete: "cascade" })
+    .notNull(),
+  action: varchar("action", { length: 64 }).notNull(),
+  status: varchar("status", { length: 16 }).notNull(), // success | failed | skipped
+  detail: text("detail"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const automationRunStepsRelations = relations(automationRunSteps, ({ one }) => ({
+  run: one(automationRuns, {
+    fields: [automationRunSteps.runId],
+    references: [automationRuns.id],
+  }),
+}));
 
 // ---------- Public document links ----------
 // One row per document that has been shared via a public link (used by

@@ -71,6 +71,13 @@
       "when": 1788217778006,
       "tag": "0009_loving_revanche",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788268986875,
+      "tag": "0010_fantastic_fallen_one",
+      "breakpoints": true
     }
   ]
 }

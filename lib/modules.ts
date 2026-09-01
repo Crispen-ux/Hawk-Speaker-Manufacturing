@@ -238,6 +238,21 @@ export const MODULES: readonly ModuleDef[] = [
     built: true,
     alwaysOn: true,
   },
+  {
+    key: "clientPortal",
+    label: "Client portal",
+    description: "A secure login for clients to view documents, approve quotations and manage their account.",
+    routePrefix: "/portal",
+    built: true,
+  },
+  {
+    key: "automation",
+    label: "Automation",
+    description: "Event-driven workflows that trigger actions like converting quotations or sending documents.",
+    href: "/settings/automation",
+    routePrefix: "/automation",
+    built: true,
+  },
 ];
 
 /** Find the owning module for a given pathname, or undefined for unknown paths. */

@@ -10,6 +10,11 @@ const PUBLIC_PREFIXES = [
   "/api/settings/logo",
   "/api/cron",
   "/shared",
+  // Client portal — its own public auth + a dedicated session cookie. Portal
+  // routes authenticate the portal client themselves, separate from internal
+  // admin/staff sessions, so the internal guard must not block them.
+  "/portal",
+  "/api/portal",
   "/_next",
   "/favicon",
 ];
