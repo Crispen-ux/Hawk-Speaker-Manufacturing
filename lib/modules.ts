@@ -249,7 +249,7 @@ export const MODULES: readonly ModuleDef[] = [
     key: "automation",
     label: "Automation",
     description: "Event-driven workflows that trigger actions like converting quotations or sending documents.",
-    href: "/settings/automation",
+    href: "/automation",
     routePrefix: "/automation",
     built: true,
   },
