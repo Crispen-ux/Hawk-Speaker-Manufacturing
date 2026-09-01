@@ -10,6 +10,9 @@ const PUBLIC_PREFIXES = [
   "/api/settings/logo",
   "/api/cron",
   "/shared",
+  // Public, token-based document decisions (Approve/Decline) — the token in
+  // the URL is the credential, same model as the /shared PDF links.
+  "/approve",
   // Client portal — its own public auth + a dedicated session cookie. Portal
   // routes authenticate the portal client themselves, separate from internal
   // admin/staff sessions, so the internal guard must not block them.

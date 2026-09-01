@@ -77,6 +77,21 @@ export async function publicDocumentUrl(meta: SharedLinkMeta): Promise<string> {
   return `${baseUrl}/shared/${token}`;
 }
 
+/**
+ * Public URL for a client to approve/decline a document — for now only
+ * quotations support this. Shares the same unguessable token as the document
+ * PDF link, so possession of the link is the authentication.
+ */
+export async function publicApprovalUrl(meta: SharedLinkMeta): Promise<string> {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl) return "";
+  const token =
+    meta.kind === "statement"
+      ? await ensureStatementLink(meta.clientId, meta.fromDate, meta.toDate)
+      : await ensureDocumentLink(meta.kind, meta.documentId);
+  return `${baseUrl}/approve/${token}`;
+}
+
 /** Looks up what a share token points at; null when the token is unknown. */
 export async function resolveDocumentLink(token: string): Promise<SharedLinkMeta | null> {
   if (!token) return null;

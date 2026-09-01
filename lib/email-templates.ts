@@ -107,6 +107,12 @@ export type EmailCompany = {
   vatNumber?: string | null;
 };
 
+export type EmailCta = {
+  label: string;
+  url: string;
+  primary?: boolean;
+};
+
 /**
  * Builds a bulletproof HTML email: table-based layout, inline styles, web
  * -safe fonts. Outlook (desktop) uses Word's rendering engine and ignores
@@ -123,6 +129,7 @@ export function buildDocumentEmail({
   highlight,
   attachmentLabel,
   company,
+  cta,
 }: {
   kicker: string;
   heading: string;
@@ -133,6 +140,7 @@ export function buildDocumentEmail({
   highlight: DetailRow;
   attachmentLabel: string;
   company: EmailCompany;
+  cta?: EmailCta[];
 }) {
   const bodyText = message ? escapeHtml(message.trim()).replace(/\n/g, "<br/>") : escapeHtml(greeting);
   const salutation = recipientName ? `Good day ${escapeHtml(recipientName)},` : "Good day,";
@@ -158,6 +166,29 @@ export function buildDocumentEmail({
     : "";
 
   const contactLine = [company.email, company.phone].filter(Boolean).join("  ·  ");
+
+  const ctaBlock = cta?.length
+    ? `
+        <!-- Action buttons -->
+        <tr>
+          <td style="padding:24px 40px 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                ${cta
+                  .map(
+                    (b) => `
+                  <td style="padding:0 8px 0 0;">
+                    <a href="${b.url}" style="display:inline-block; padding:12px 22px; border-radius:6px; font-family:Arial,Helvetica,sans-serif; font-size:14px; font-weight:bold; text-decoration:none; color:#FFFFFF; background-color:${b.primary ? "#1F8A5A" : "#C0392B"};">
+                      ${escapeHtml(b.label)}
+                    </a>
+                  </td>`
+                  )
+                  .join("")}
+              </tr>
+            </table>
+          </td>
+        </tr>`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -219,6 +250,8 @@ export function buildDocumentEmail({
               </table>
             </td>
           </tr>
+
+          ${ctaBlock}
 
           <!-- Attachment note -->
           <tr>

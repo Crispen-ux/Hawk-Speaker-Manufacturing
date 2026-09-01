@@ -1,6 +1,6 @@
 export const WHATSAPP_TEMPLATE_KEYS = {
   invoice: ["companyName", "number", "total", "dueDate", "clientName", "link"],
-  quotation: ["companyName", "number", "total", "validUntil", "clientName", "link"],
+  quotation: ["companyName", "number", "total", "validUntil", "clientName", "link", "approvalText"],
   statement: ["companyName", "clientName", "period", "outstanding", "link"],
   paymentReminder: ["companyName", "number", "total", "dueDate", "outstanding", "clientName", "link"],
   deliveryNotification: ["companyName", "number", "clientName", "deliveryDate", "itemCount", "link"],
@@ -9,7 +9,7 @@ export const WHATSAPP_TEMPLATE_KEYS = {
 
 export const DEFAULT_WHATSAPP_TEMPLATES: Record<string, string> = {
   invoice: "Hi {clientName}, your invoice {number} for {total} is due by {dueDate}. {link}",
-  quotation: "Hi {clientName}, your quotation {number} for {total} is valid until {validUntil}. {link}",
+  quotation: "Hi {clientName}, your quotation {number} for {total} is valid until {validUntil}. {link}{approvalText}",
   statement: "Hi {clientName}, here is your statement for {period}. Outstanding: {outstanding}. {link}",
   paymentReminder:
     "Hi {clientName}, a friendly reminder that invoice {number} for {total} is due by {dueDate}. Outstanding: {outstanding}. {link}",

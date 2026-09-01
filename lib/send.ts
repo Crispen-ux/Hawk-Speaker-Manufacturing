@@ -12,7 +12,7 @@ import {
   type EmailCompany,
 } from "@/lib/email-templates";
 import { getWhatsAppTemplates } from "@/lib/communications/templates";
-import { publicDocumentUrl } from "@/lib/public-links";
+import { publicDocumentUrl, publicApprovalUrl } from "@/lib/public-links";
 import { getBaseUrl } from "@/lib/base-url";
 import { logAudit } from "@/lib/audit";
 import { waMeUrl, normalizeWaPhone } from "@/lib/whatsapp-deeplink";
@@ -304,6 +304,7 @@ async function buildQuotationDelivery(
     clientName: quotation.client?.name ?? "",
   };
   const link = await publicDocumentUrl({ kind: "quotation", documentId: quotationId });
+  const approvalLink = await publicApprovalUrl({ kind: "quotation", documentId: quotationId });
 
   const html = buildDocumentEmail({
     kicker: "Quotation",
@@ -319,6 +320,12 @@ async function buildQuotationDelivery(
     highlight: { label: "Total", value: vars.total },
     attachmentLabel: `${quotation.number}.pdf`,
     company: companyForEmail(settings),
+    cta: approvalLink
+      ? [
+          { label: "Approve quotation", url: approvalLink, primary: true },
+          { label: "Decline", url: approvalLink, primary: false },
+        ]
+      : undefined,
   });
 
   const message: CommunicationMessage = {
@@ -327,7 +334,13 @@ async function buildQuotationDelivery(
     toPhone: recipients.phone ?? undefined,
     subject: renderTemplate(emailTemplates.quotation.subject, vars),
     html,
-    text: renderTemplate(waTemplates.quotation, { ...vars, link }),
+    text: renderTemplate(waTemplates.quotation, {
+      ...vars,
+      link,
+      approvalText: approvalLink
+        ? `\nApprove or decline: ${approvalLink}`
+        : "",
+    }),
     link: link || undefined,
     attachment: { filename: `${quotation.number}.pdf`, contentBase64: buffer.toString("base64") },
     tokens: vars,
