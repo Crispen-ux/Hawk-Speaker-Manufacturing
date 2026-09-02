@@ -6,6 +6,7 @@ import { PageHeader, EmptyState } from "@/components/ui";
 import { formatDate } from "@/lib/money";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/actions/notifications";
 import { routeForDocument } from "@/lib/audit";
+import PushNotifications from "@/components/PushNotifications";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,10 @@ export default async function NotificationsPage() {
           )
         }
       />
+
+      <div className="mb-5">
+        <PushNotifications />
+      </div>
 
       {rows.length === 0 ? (
         <EmptyState title="Nothing yet" hint="Events like payments received and leave decisions will show up here." />

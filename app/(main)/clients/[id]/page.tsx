@@ -1,9 +1,10 @@
 import { db } from "@/db";
-import { clients, invoices, quotations, portalUsers } from "@/db/schema";
+import { clients, invoices, quotations, portalUsers, clientActivities } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { updateClient, deleteClient, createPortalAccess, togglePortalAccess, resetPortalPassword, deletePortalAccess } from "@/lib/actions/clients";
+import { addClientActivity, deleteClientActivity } from "@/lib/actions/client-activities";
 import { PageHeader, Field, inputClass, PrimaryButton, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -11,6 +12,14 @@ import { formatDate } from "@/lib/money";
 import { getEnabledModules } from "@/lib/enabled-modules";
 
 export const dynamic = "force-dynamic";
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  call: "Call",
+  note: "Note",
+  meeting: "Meeting",
+  follow_up: "Follow-up",
+  manual: "Note",
+};
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,6 +39,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     .where(eq(quotations.clientId, clientId))
     .orderBy(desc(quotations.createdAt));
 
+  const activities = await db
+    .select()
+    .from(clientActivities)
+    .where(eq(clientActivities.clientId, clientId))
+    .orderBy(desc(clientActivities.createdAt))
+    .limit(50);
+
+  const logActivity = addClientActivity; // bound via hidden clientId input
   const enabled = await getEnabledModules();
   const portalOn = enabled["clientPortal"] !== false;
   const portalUsersRows = portalOn
@@ -127,6 +144,75 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                         <td className="px-4 py-2.5 text-ink-soft">{formatDate(q.issueDate)}</td>
                         <td className="px-4 py-2.5 text-right">
                           <StatusStamp status={q.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h2 className="mb-3 font-display text-lg font-bold text-navy">Activity log</h2>
+            <Card className="mb-5">
+              <form action={logActivity} className="space-y-3">
+                <input type="hidden" name="clientId" value={clientId} />
+                <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+                  <Field label="Type">
+                    <select name="type" defaultValue="manual" className={inputClass}>
+                      <option value="manual">Note</option>
+                      <option value="call">Call</option>
+                      <option value="meeting">Meeting</option>
+                      <option value="follow_up">Follow-up</option>
+                    </select>
+                  </Field>
+                  <Field label="Title">
+                    <input name="title" required className={inputClass} placeholder="e.g. Discussed quarterly maintenance plan" />
+                  </Field>
+                </div>
+                <Field label="Details (optional)">
+                  <textarea name="description" rows={2} className={inputClass} />
+                </Field>
+                <PrimaryButton type="submit">Log activity</PrimaryButton>
+              </form>
+            </Card>
+
+            {activities.length === 0 ? (
+              <p className="text-sm text-ink-soft">No activity logged yet.</p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-rule">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
+                      <th className="px-4 py-2.5 font-medium">Date</th>
+                      <th className="px-4 py-2.5 font-medium">Type</th>
+                      <th className="px-4 py-2.5 font-medium">Entry</th>
+                      <th className="px-4 py-2.5 font-medium"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activities.map((a) => (
+                      <tr key={a.id} className="border-b border-rule last:border-b-0">
+                        <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">
+                          {formatDate(a.createdAt.toISOString())}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${a.auto ? "bg-paper-dim text-ink-soft" : "bg-emerald-50 text-emerald-700"}`}>
+                            {ACTIVITY_LABELS[a.type] ?? a.type}{a.auto ? " · auto" : ""}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="font-medium text-ink">{a.title}</div>
+                          {a.description && <div className="text-xs text-ink-soft">{a.description}</div>}
+                          {a.documentKind && (
+                            <div className="text-xs text-ink-soft">on {a.documentKind.replace(/_/g, " ")}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <form action={deleteClientActivity.bind(null, a.id, clientId)}>
+                            <button type="submit" className="text-xs text-rust hover:underline">Remove</button>
+                          </form>
                         </td>
                       </tr>
                     ))}

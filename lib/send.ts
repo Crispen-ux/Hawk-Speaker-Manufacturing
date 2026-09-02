@@ -15,6 +15,7 @@ import { getWhatsAppTemplates } from "@/lib/communications/templates";
 import { publicDocumentUrl, publicApprovalUrl } from "@/lib/public-links";
 import { getBaseUrl } from "@/lib/base-url";
 import { logAudit } from "@/lib/audit";
+import { logClientActivity } from "@/lib/activity";
 import { waMeUrl, normalizeWaPhone } from "@/lib/whatsapp-deeplink";
 import {
   dispatch,
@@ -166,7 +167,7 @@ async function buildInvoiceDelivery(
     tokens: vars,
   };
 
-  return { message, settings, status: invoice.status, fmt, paid, total, balance, vars, link };
+  return { message, settings, status: invoice.status, clientId: invoice.clientId, clientName: invoice.client?.name, fmt, paid, total, balance, vars, link };
 }
 
 export async function sendInvoiceByEmail(invoiceId: number, to: string, message?: string) {
@@ -177,6 +178,16 @@ export async function sendInvoiceByEmail(invoiceId: number, to: string, message?
     .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
     .where(eq(invoices.id, invoiceId));
   auditSent("invoice", invoiceId, built.vars.number, "sent_email", to);
+  if (built.clientId) {
+    void logClientActivity({
+      clientId: built.clientId,
+      type: "call",
+      title: `Invoice ${built.vars.number} sent by email`,
+      description: `Sent to ${to}${message ? ` — ${message}` : ""}`,
+      documentKind: "invoice",
+      documentId: invoiceId,
+    });
+  }
   return summary;
 }
 
@@ -194,6 +205,16 @@ export async function sendInvoiceByWhatsApp(invoiceId: number, toPhone?: string)
       .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
       .where(eq(invoices.id, invoiceId));
     auditSent("invoice", invoiceId, built.vars.number, "sent_whatsapp", toPhone ?? undefined);
+    if (built.clientId) {
+      void logClientActivity({
+        clientId: built.clientId,
+        type: "call",
+        title: `Invoice ${built.vars.number} sent by WhatsApp`,
+        description: `Sent to ${toPhone ?? built.clientName ?? ""}`,
+        documentKind: "invoice",
+        documentId: invoiceId,
+      });
+    }
   }
   return summary;
 }
@@ -346,7 +367,7 @@ async function buildQuotationDelivery(
     tokens: vars,
   };
 
-  return { message, status: quotation.status };
+  return { message, status: quotation.status, clientId: quotation.clientId, clientName: quotation.client?.name };
 }
 
 export async function sendQuotationByEmail(quotationId: number, to: string, message?: string) {
@@ -357,6 +378,16 @@ export async function sendQuotationByEmail(quotationId: number, to: string, mess
     .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
     .where(eq(quotations.id, quotationId));
   auditSent("quotation", quotationId, built.message.tokens?.number, "sent_email", to);
+  if (built.clientId) {
+    void logClientActivity({
+      clientId: built.clientId,
+      type: "call",
+      title: `Quotation ${built.message.tokens?.number} sent by email`,
+      description: `Sent to ${to}${message ? ` — ${message}` : ""}`,
+      documentKind: "quotation",
+      documentId: quotationId,
+    });
+  }
   return summary;
 }
 
@@ -369,6 +400,16 @@ export async function sendQuotationByWhatsApp(quotationId: number, toPhone?: str
       .set({ lastSentAt: new Date(), status: built.status === "draft" ? "sent" : built.status })
       .where(eq(quotations.id, quotationId));
     auditSent("quotation", quotationId, built.message.tokens?.number, "sent_whatsapp", toPhone ?? undefined);
+    if (built.clientId) {
+      void logClientActivity({
+        clientId: built.clientId,
+        type: "call",
+        title: `Quotation ${built.message.tokens?.number} sent by WhatsApp`,
+        description: `Sent to ${toPhone ?? built.clientName ?? ""}`,
+        documentKind: "quotation",
+        documentId: quotationId,
+      });
+    }
   }
   return summary;
 }

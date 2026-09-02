@@ -237,6 +237,22 @@ export default async function SettingsPage() {
           </div>
         </Card>
 
+        <Card className="max-w-2xl">
+          <h2 className="mb-1 font-display text-lg font-bold text-navy">Notifications</h2>
+          <p className="mb-5 text-xs text-ink-soft">
+            System alerts (payments received, leave decisions, low stock, …) surface in the app automatically.
+            Choose whether a copy is also emailed to the address in the Company card. Browser push is
+            switched on per device from the Notifications page.
+          </p>
+          <Field label="Email me a copy of notifications">
+            <select name="emailNotifications" defaultValue={settings.emailNotifications ?? "all"} className={inputClass}>
+              <option value="all">Yes — all notifications</option>
+              <option value="warning">Only warnings and urgent alerts</option>
+              <option value="off">No email copies</option>
+            </select>
+          </Field>
+        </Card>
+
         <div className="max-w-2xl pt-2">
           <PrimaryButton type="submit">Save settings</PrimaryButton>
         </div>

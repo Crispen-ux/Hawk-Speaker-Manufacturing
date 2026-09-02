@@ -154,6 +154,20 @@ export default async function ReportsPage() {
         </div>
 
         <div>
+          <h2 className="mb-3 mt-10 font-display text-lg font-bold text-navy">Tax</h2>
+          <Card className="p-5">
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/reports/vat"
+                className="rounded-md border border-rule px-3 py-2 font-mono text-xs text-forest hover:border-forest"
+              >
+                VAT report (PDF / CSV)
+              </Link>
+            </div>
+          </Card>
+        </div>
+
+        <div>
           <h2 className="mb-3 mt-10 font-display text-lg font-bold text-navy">Exports</h2>
           <Card className="p-5">
             <p className="mb-4 text-xs text-ink-soft">

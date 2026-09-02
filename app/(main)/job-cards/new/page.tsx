@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { clients, catalogItems } from "@/db/schema";
+import { clients, catalogItems, bomHeaders } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createJobCard } from "@/lib/actions/jobCards";
 import { getSettings } from "@/lib/numbering";
@@ -16,6 +16,7 @@ export default async function NewJobCardPage() {
   const allClients = await db.select().from(clients).orderBy(clients.name);
   const settings = await getSettings();
   const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
+  const boms = await db.select().from(bomHeaders).orderBy(bomHeaders.name);
 
   if (allClients.length === 0) {
     return (
@@ -69,6 +70,19 @@ export default async function NewJobCardPage() {
               <input name="equipment" className={inputClass} placeholder="Dell PowerEdge R740, Serial #123" />
             </Field>
           </div>
+
+          {boms.length > 0 && (
+            <Field label="Bill of materials (optional)">
+              <select name="bomId" className={inputClass}>
+                <option value="">None</option>
+                {boms.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           <LineItemsEditor
             initialItems={[]}

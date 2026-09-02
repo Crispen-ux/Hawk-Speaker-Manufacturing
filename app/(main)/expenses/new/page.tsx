@@ -1,6 +1,7 @@
 import { createExpense } from "@/lib/actions/expenses";
 import { db } from "@/db";
-import { suppliers } from "@/db/schema";
+import { suppliers, jobCards } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
 import { getExpenseAccounts } from "@/lib/ledger";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
@@ -11,6 +12,7 @@ export default async function NewExpensePage() {
   const settings = await getSettings();
   const supplierRows = await db.select().from(suppliers).orderBy(suppliers.name);
   const accountRows = await getExpenseAccounts();
+  const openJobs = await db.select().from(jobCards).where(eq(jobCards.status, "open")).orderBy(jobCards.number);
 
   return (
     <div>
@@ -60,9 +62,28 @@ export default async function NewExpensePage() {
                 ))}
               </select>
             </Field>
+            <Field label="VAT treatment">
+              <select name="vatTreatment" defaultValue="standard" className={inputClass}>
+                <option value="standard">Standard</option>
+                <option value="zero_rated">Zero-rated</option>
+                <option value="exempt">Exempt</option>
+              </select>
+            </Field>
             <Field label="Reference (receipt / txn no.)">
               <input name="reference" className={inputClass} />
             </Field>
+            {openJobs.length > 0 && (
+              <Field label="Job card (optional)">
+                <select name="jobCardId" className={inputClass}>
+                  <option value="">— None —</option>
+                  {openJobs.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.number} — {j.title}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
           </div>
           <Field label="Notes">
             <textarea name="notes" rows={3} className={inputClass} />

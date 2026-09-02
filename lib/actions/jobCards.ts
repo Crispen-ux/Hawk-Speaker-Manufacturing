@@ -38,6 +38,10 @@ export async function createJobCard(formData: FormData) {
   const discount = String(formData.get("discount") ?? "0");
   const notes = String(formData.get("notes") ?? "") || null;
   const items = parseItems(String(formData.get("items") ?? "[]"));
+  const bomId = (() => {
+    const v = formData.get("bomId");
+    return v ? Number(v) : null;
+  })();
 
   if (!clientId) throw new Error("Client is required");
   if (!title) throw new Error("Title is required");
@@ -57,6 +61,7 @@ export async function createJobCard(formData: FormData) {
       taxRate,
       discount,
       notes,
+      bomId,
       status: "open",
     })
     .returning({ id: jobCards.id });
@@ -91,10 +96,14 @@ export async function updateJobCard(id: number, formData: FormData) {
   const discount = String(formData.get("discount") ?? "0");
   const notes = String(formData.get("notes") ?? "") || null;
   const items = parseItems(String(formData.get("items") ?? "[]"));
+  const bomId = (() => {
+    const v = formData.get("bomId");
+    return v ? Number(v) : null;
+  })();
 
   await db
     .update(jobCards)
-    .set({ clientId, title, description, technician, equipment, openedDate, completedDate, taxRate, discount, notes })
+    .set({ clientId, title, description, technician, equipment, openedDate, completedDate, taxRate, discount, notes, bomId })
     .where(eq(jobCards.id, id));
 
   await db.delete(jobCardItems).where(eq(jobCardItems.jobCardId, id));

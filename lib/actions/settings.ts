@@ -38,6 +38,13 @@ export async function updateSettings(formData: FormData) {
 
   const str = (key: string, fallback = "") => String(formData.get(key) ?? fallback);
 
+  const emailNotificationModes = ["off", "warning", "all"] as const;
+  const emailNotifications: (typeof emailNotificationModes)[number] = (
+    emailNotificationModes as readonly string[]
+  ).includes(str("emailNotifications", "all"))
+    ? (str("emailNotifications", "all") as (typeof emailNotificationModes)[number])
+    : "all";
+
   const base = {
     companyName: str("companyName", "Your Company"),
     registrationNumber: str("registrationNumber") || null,
@@ -59,6 +66,7 @@ export async function updateSettings(formData: FormData) {
     deliveryNotePrefix: str("deliveryNotePrefix", "DN-"),
     creditNotePrefix: str("creditNotePrefix", "CN-"),
     receiptPrefix: str("receiptPrefix", "RCPT-"),
+    supplierBillPrefix: str("supplierBillPrefix", "SB-"),
     nextInvoiceNumber: int("nextInvoiceNumber", 1),
     nextQuotationNumber: int("nextQuotationNumber", 1),
     nextPurchaseOrderNumber: int("nextPurchaseOrderNumber", 1),
@@ -66,6 +74,8 @@ export async function updateSettings(formData: FormData) {
     nextDeliveryNoteNumber: int("nextDeliveryNoteNumber", 1),
     nextCreditNoteNumber: int("nextCreditNoteNumber", 1),
     nextReceiptNumber: int("nextReceiptNumber", 1),
+    nextSupplierBillNumber: int("nextSupplierBillNumber", 1),
+    emailNotifications,
   };
 
   // Email templates come in as individual fields named

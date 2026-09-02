@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nextInvoiceNumber, nextQuotationNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { logClientActivity } from "@/lib/activity";
 import { flashUrl } from "@/lib/flash";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
@@ -102,6 +103,18 @@ export async function setQuotationStatus(
   id: number,
   status: (typeof quotations.status.enumValues)[number]
 ) {
+  if (status === "accepted") {
+    const [q] = await db.select().from(quotations).where(eq(quotations.id, id));
+    if (q) {
+      void logClientActivity({
+        clientId: q.clientId,
+        type: "follow_up",
+        title: `Quotation ${q.number} accepted`,
+        documentKind: "quotation",
+        documentId: id,
+      });
+    }
+  }
   await db.update(quotations).set({ status }).where(eq(quotations.id, id));
   await logAudit({ documentKind: "quotation", documentId: id, action: "status_changed", detail: `→ ${status}` });
   revalidatePath("/quotations");

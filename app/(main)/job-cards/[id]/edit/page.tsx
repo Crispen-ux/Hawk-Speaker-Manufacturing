@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { clients, jobCards, catalogItems } from "@/db/schema";
+import { clients, jobCards, catalogItems, bomHeaders } from "@/db/schema";
 import { updateJobCard } from "@/lib/actions/jobCards";
 import { PageHeader, Field, inputClass, PrimaryButton, GhostLink, Card } from "@/components/ui";
 import LineItemsEditor from "@/components/LineItemsEditor";
@@ -21,6 +21,7 @@ export default async function EditJobCardPage({ params }: { params: Promise<{ id
 
   const allClients = await db.select().from(clients).orderBy(clients.name);
   const catalog = await db.select().from(catalogItems).where(eq(catalogItems.active, true)).orderBy(catalogItems.name);
+  const boms = await db.select().from(bomHeaders).orderBy(bomHeaders.name);
   const settings = await getSettings();
   const updateWithId = updateJobCard.bind(null, jobId);
 
@@ -64,6 +65,19 @@ export default async function EditJobCardPage({ params }: { params: Promise<{ id
           <Field label="Completed date">
             <input type="date" name="completedDate" defaultValue={job.completedDate ?? ""} className={`${inputClass} max-w-xs`} />
           </Field>
+
+          {boms.length > 0 && (
+            <Field label="Bill of materials (optional)">
+              <select name="bomId" defaultValue={job.bomId ?? ""} className={inputClass}>
+                <option value="">None</option>
+                {boms.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           <LineItemsEditor
             initialItems={job.items.map((it) => ({

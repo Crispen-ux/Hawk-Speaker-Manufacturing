@@ -1,8 +1,8 @@
 import { db } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { jobCards } from "@/db/schema";
 import Link from "next/link";
+import { jobCards, expenses, supplierBills, bomItems, supplierBillItems } from "@/db/schema";
 import { setJobCardStatus, deleteJobCard, convertJobCardToInvoice } from "@/lib/actions/jobCards";
 import { sendJobCardEmailAction } from "@/lib/actions/send";
 import { calcTotals, formatDate, formatMoney, toNumber } from "@/lib/money";
@@ -25,7 +25,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
 
   const job = await db.query.jobCards.findFirst({
     where: eq(jobCards.id, jobId),
-    with: { client: true, items: true },
+    with: { client: true, items: true, bom: true, sourceQuotation: true },
   });
   if (!job) notFound();
 
@@ -55,6 +55,35 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       showPricing: job.items.length > 0,
     }
   );
+
+  const jobExpenses = await db.query.expenses.findMany({
+    where: eq(expenses.jobCardId, jobId),
+    orderBy: [expenses.date],
+  });
+
+  let relatedSupplierBills: { id: number; number: string; description: string; status: string }[] = [];
+  if (job.bomId) {
+    const bomItemRows = await db.select({ id: bomItems.id }).from(bomItems).where(eq(bomItems.bomId, job.bomId));
+    const bomItemIds = bomItemRows.map((r) => r.id);
+    if (bomItemIds.length > 0) {
+      const sbItemRows = await db
+        .select({ supplierBillId: supplierBillItems.supplierBillId })
+        .from(supplierBillItems)
+        .where(inArray(supplierBillItems.bomItemId, bomItemIds));
+      const sbIds = Array.from(new Set(sbItemRows.map((s) => s.supplierBillId)));
+      relatedSupplierBills = sbIds.length
+        ? await db
+            .select({
+              id: supplierBills.id,
+              number: supplierBills.number,
+              description: supplierBills.description,
+              status: supplierBills.status,
+            })
+            .from(supplierBills)
+            .where(inArray(supplierBills.id, sbIds))
+        : [];
+    }
+  }
 
   return (
     <div>
@@ -150,9 +179,55 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
             <p className="mt-4 text-sm text-ink-soft">
               Invoiced —{" "}
               <Link href={`/invoices/${job.convertedInvoiceId}`} className="text-forest hover:underline">
-                view invoice →
+                view invoice
               </Link>
             </p>
+          )}
+
+          {jobExpenses.length > 0 && (
+            <Card className="mt-6">
+              <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">Expenses on this job</h3>
+              <div className="overflow-hidden rounded-lg border border-rule">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
+                      <th className="px-4 py-2 font-medium">Description</th>
+                      <th className="px-4 py-2 font-medium">Date</th>
+                      <th className="px-4 py-2 font-medium">Status</th>
+                      <th className="px-4 py-2 text-right font-medium">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobExpenses.map((e) => (
+                      <tr key={e.id} className="border-b border-rule last:border-b-0">
+                        <td className="px-4 py-2.5">
+                          <Link href={`/expenses/${e.id}`} className="text-ink hover:text-forest">{e.description}</Link>
+                        </td>
+                        <td className="px-4 py-2.5 text-ink-soft">{formatDate(e.date)}</td>
+                        <td className="px-4 py-2.5"><StatusStamp status={e.status} /></td>
+                        <td className="px-4 py-2.5 text-right font-mono">{money(e.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {relatedSupplierBills.length > 0 && (
+            <Card className="mt-6">
+              <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">Supplier bills for components</h3>
+              <ul className="space-y-1">
+                {relatedSupplierBills.map((b) => (
+                  <li key={b.id} className="flex items-center justify-between">
+                    <Link href={`/supplier-bills/${b.id}`} className="font-mono text-sm text-forest hover:underline">
+                      {b.number}
+                    </Link>
+                    <StatusStamp status={b.status} />
+                  </li>
+                ))}
+              </ul>
+            </Card>
           )}
         </div>
 
@@ -212,6 +287,24 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
             <p className="font-medium text-ink">{job.client?.name}</p>
             {job.client?.email && <p className="text-sm text-ink-soft">{job.client.email}</p>}
           </Card>
+
+          {job.bom && (
+            <Card>
+              <h3 className="mb-2 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">Bill of materials</h3>
+              <Link href={`/bom/${job.bomId}`} className="text-sm font-medium text-forest hover:underline">
+                {job.bom.name}
+              </Link>
+            </Card>
+          )}
+
+          {job.sourceQuotation && (
+            <Card>
+              <h3 className="mb-2 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">Source quotation</h3>
+              <Link href={`/quotations/${job.sourceQuotationId}`} className="text-sm font-medium text-forest hover:underline">
+                {job.sourceQuotation.number}
+              </Link>
+            </Card>
+          )}
 
           <ConfirmForm action={removeJob} confirm="Delete this job card? This can't be undone.">
             <button className="w-full font-mono text-xs uppercase tracking-wide text-rust hover:underline">

@@ -78,6 +78,20 @@
       "when": 1788268986875,
       "tag": "0010_fantastic_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788289851905,
+      "tag": "0011_panoramic_terrax",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788352835324,
+      "tag": "0012_stale_maverick",
+      "breakpoints": true
     }
   ]
 }

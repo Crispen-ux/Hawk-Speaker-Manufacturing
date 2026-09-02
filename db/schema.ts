@@ -71,6 +71,20 @@ export const accountTypeEnum = pgEnum("account_type", [
 
 export const journalEntryKindEnum = pgEnum("journal_entry_kind", ["manual", "opening"]);
 
+export const vatTreatmentEnum = pgEnum("vat_treatment", ["standard", "zero_rated", "exempt"]);
+
+export const expenseStatusEnum = pgEnum("expense_status", ["submitted", "approved", "rejected"]);
+
+export const clientActivityTypeEnum = pgEnum("client_activity_type", [
+  "call",
+  "note",
+  "meeting",
+  "follow_up",
+  "manual",
+]);
+
+export const docVisibilityEnum = pgEnum("doc_visibility", ["internal", "client", "both"]);
+
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 256 }).notNull(),
@@ -114,6 +128,7 @@ export const invoiceItems = pgTable("invoice_items", {
   description: text("description").notNull(),
   quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  vatTreatment: vatTreatmentEnum("vat_treatment").default("standard").notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
 });
 
@@ -257,6 +272,7 @@ export const quotationItems = pgTable("quotation_items", {
   description: text("description").notNull(),
   quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  vatTreatment: vatTreatmentEnum("vat_treatment").default("standard").notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
 });
 
@@ -291,10 +307,15 @@ export const settings = pgTable("settings", {
   nextDeliveryNoteNumber: integer("next_delivery_note_number").default(1).notNull(),
   nextCreditNoteNumber: integer("next_credit_note_number").default(1).notNull(),
   nextReceiptNumber: integer("next_receipt_number").default(1).notNull(),
+  supplierBillPrefix: varchar("supplier_bill_prefix", { length: 16 }).default("SB-").notNull(),
+  nextSupplierBillNumber: integer("next_supplier_bill_number").default(1).notNull(),
   journalPrefix: varchar("journal_prefix", { length: 16 }).default("JE-").notNull(),
   nextJournalNumber: integer("next_journal_number").default(1).notNull(),
   emailTemplates: text("email_templates"),
   whatsappTemplates: text("whatsapp_templates"),
+  // Email copies of in-app notifications to the company inbox
+  // ('off' | 'all' | 'warning').
+  emailNotifications: varchar("email_notifications", { length: 16 }).default("all").notNull(),
 });
 
 export const catalogItems = pgTable("catalog_items", {
@@ -355,6 +376,35 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   deliveryNotes: many(deliveryNotes),
   creditNotes: many(creditNotes),
   receipts: many(receipts),
+  activities: many(clientActivities),
+  uploads: many(uploads),
+}));
+
+// ---------- Client activity / CRM log ----------
+// Timeline of interactions with a client. Entries are created manually
+// (calls, meetings, notes, follow-ups) and, where useful, automatically from
+// document events (invoices sent, quotations accepted, …). The `document_kind`
+// + `document_id` pair links an activity to the document it refers to.
+// `auto` records whether the entry was generated from an event vs. typed.
+
+export const clientActivities = pgTable("client_activities", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .references(() => clients.id, { onDelete: "cascade" })
+    .notNull(),
+  type: clientActivityTypeEnum("type").default("manual").notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  documentKind: varchar("document_kind", { length: 32 }),
+  documentId: integer("document_id"),
+  auto: boolean("auto").default(false).notNull(),
+  createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const clientActivitiesRelations = relations(clientActivities, ({ one }) => ({
+  client: one(clients, { fields: [clientActivities.clientId], references: [clients.id] }),
+  createdBy: one(users, { fields: [clientActivities.createdById], references: [users.id] }),
 }));
 
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
@@ -398,6 +448,7 @@ export const suppliers = pgTable("suppliers", {
 export const suppliersRelations = relations(suppliers, ({ many }) => ({
   purchaseOrders: many(purchaseOrders),
   expenses: many(expenses),
+  supplierBills: many(supplierBills),
 }));
 
 // ---------- Purchase Orders ----------
@@ -458,6 +509,10 @@ export const jobCards = pgTable("job_cards", {
   completedDate: date("completed_date"),
   taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
   discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
+  bomId: integer("bom_id").references(() => bomHeaders.id, { onDelete: "set null" }),
+  sourceQuotationId: integer("source_quotation_id").references(() => quotations.id, {
+    onDelete: "set null",
+  }),
   notes: text("notes"),
   lastSentAt: timestamp("last_sent_at"),
   convertedInvoiceId: integer("converted_invoice_id"),
@@ -472,16 +527,137 @@ export const jobCardItems = pgTable("job_card_items", {
   description: text("description").notNull(),
   quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  vatTreatment: vatTreatmentEnum("vat_treatment").default("standard").notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
 });
 
 export const jobCardsRelations = relations(jobCards, ({ one, many }) => ({
   client: one(clients, { fields: [jobCards.clientId], references: [clients.id] }),
   items: many(jobCardItems),
+  bom: one(bomHeaders, { fields: [jobCards.bomId], references: [bomHeaders.id] }),
+  sourceQuotation: one(quotations, {
+    fields: [jobCards.sourceQuotationId],
+    references: [quotations.id],
+  }),
 }));
 
 export const jobCardItemsRelations = relations(jobCardItems, ({ one }) => ({
   jobCard: one(jobCards, { fields: [jobCardItems.jobCardId], references: [jobCards.id] }),
+}));
+
+// ---------- Bills of Materials ----------
+// A BOM is a reusable template or per-job build breakdown. Each line is a
+// component/spare that is either linked to a catalogue item or entered as a
+// free-text description. Unit cost is the per-unit purchase cost; markup is a
+// % added when the BOM is rolled into a quotation/job card/invoice.
+
+export const bomHeaders = pgTable("bom_headers", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: text("description"),
+  // Optional link to the finished product/service (catalogue item).
+  catalogItemId: integer("catalog_item_id").references(() => catalogItems.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const bomItems = pgTable("bom_items", {
+  id: serial("id").primaryKey(),
+  bomId: integer("bom_id")
+    .references(() => bomHeaders.id, { onDelete: "cascade" })
+    .notNull(),
+  catalogItemId: integer("catalog_item_id").references(() => catalogItems.id, {
+    onDelete: "set null",
+  }),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
+  unitCost: numeric("unit_cost", { precision: 12, scale: 2 }).default("0").notNull(),
+  // Markup % applied on top of unit cost when the BOM feeds a quote/invoice.
+  markup: numeric("markup", { precision: 6, scale: 2 }).default("0").notNull(),
+  vatTreatment: vatTreatmentEnum("vat_treatment").default("standard").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const bomHeadersRelations = relations(bomHeaders, ({ one, many }) => ({
+  catalogItem: one(catalogItems, {
+    fields: [bomHeaders.catalogItemId],
+    references: [catalogItems.id],
+  }),
+  items: many(bomItems),
+  jobCards: many(jobCards),
+}));
+
+export const bomItemsRelations = relations(bomItems, ({ one, many }) => ({
+  bom: one(bomHeaders, { fields: [bomItems.bomId], references: [bomHeaders.id] }),
+  catalogItem: one(catalogItems, {
+    fields: [bomItems.catalogItemId],
+    references: [catalogItems.id],
+  }),
+  supplierBillItems: many(supplierBillItems),
+}));
+
+// ---------- Supplier bills ----------
+// A bill/invoice received from a supplier, with a due date and an approval
+// workflow (submitted -> approved / rejected). Bills carry input VAT and feed
+// the VAT report. Line items can reference the BOM items / spares they
+// re-supplied, keeping the job <=> supplier chain traceable.
+
+export const supplierBills = pgTable("supplier_bills", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 64 }).notNull().unique(),
+  supplierId: integer("supplier_id")
+    .references(() => suppliers.id, { onDelete: "cascade" })
+    .notNull(),
+  description: varchar("description", { length: 256 }).notNull(),
+  billDate: date("bill_date").notNull(),
+  dueDate: date("due_date"),
+  taxRate: numeric("tax_rate", { precision: 6, scale: 2 }).default("0").notNull(),
+  discount: numeric("discount", { precision: 12, scale: 2 }).default("0").notNull(),
+  status: expenseStatusEnum("status").default("submitted").notNull(),
+  paid: boolean("paid").default(false).notNull(),
+  paidDate: date("paid_date"),
+  approvedById: integer("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const supplierBillItems = pgTable("supplier_bill_items", {
+  id: serial("id").primaryKey(),
+  supplierBillId: integer("supplier_bill_id")
+    .references(() => supplierBills.id, { onDelete: "cascade" })
+    .notNull(),
+  bomItemId: integer("bom_item_id").references(() => bomItems.id, { onDelete: "set null" }),
+  catalogItemId: integer("catalog_item_id").references(() => catalogItems.id, {
+    onDelete: "set null",
+  }),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1").notNull(),
+  unitCost: numeric("unit_cost", { precision: 12, scale: 2 }).default("0").notNull(),
+  vatTreatment: vatTreatmentEnum("vat_treatment").default("standard").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const supplierBillsRelations = relations(supplierBills, ({ one, many }) => ({
+  supplier: one(suppliers, { fields: [supplierBills.supplierId], references: [suppliers.id] }),
+  items: many(supplierBillItems),
+  approvedBy: one(users, { fields: [supplierBills.approvedById], references: [users.id] }),
+}));
+
+export const supplierBillItemsRelations = relations(supplierBillItems, ({ one }) => ({
+  supplierBill: one(supplierBills, {
+    fields: [supplierBillItems.supplierBillId],
+    references: [supplierBills.id],
+  }),
+  bomItem: one(bomItems, {
+    fields: [supplierBillItems.bomItemId],
+    references: [bomItems.id],
+  }),
+  catalogItem: one(catalogItems, {
+    fields: [supplierBillItems.catalogItemId],
+    references: [catalogItems.id],
+  }),
 }));
 
 // ---------- Delivery Notes ----------
@@ -574,8 +750,16 @@ export const expenses = pgTable("expenses", {
   date: date("date").notNull(),
   category: varchar("category", { length: 64 }),
   paymentMethod: varchar("payment_method", { length: 64 }),
+  vatTreatment: vatTreatmentEnum("vat_treatment").default("standard").notNull(),
   supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
   accountId: integer("account_id").references(() => accounts.id, { onDelete: "set null" }),
+  jobCardId: integer("job_card_id").references(() => jobCards.id, { onDelete: "set null" }),
+  status: expenseStatusEnum("status").default("submitted").notNull(),
+  approvedById: integer("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  receiptUploadId: integer("receipt_upload_id").references(() => uploads.id, {
+    onDelete: "set null",
+  }),
   reference: varchar("reference", { length: 128 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -584,6 +768,9 @@ export const expenses = pgTable("expenses", {
 export const expensesRelations = relations(expenses, ({ one }) => ({
   supplier: one(suppliers, { fields: [expenses.supplierId], references: [suppliers.id] }),
   account: one(accounts, { fields: [expenses.accountId], references: [accounts.id] }),
+  jobCard: one(jobCards, { fields: [expenses.jobCardId], references: [jobCards.id] }),
+  approvedBy: one(users, { fields: [expenses.approvedById], references: [users.id] }),
+  receiptUpload: one(uploads, { fields: [expenses.receiptUploadId], references: [uploads.id] }),
 }));
 
 // ---------- HR: contracts & leave ----------
@@ -673,6 +860,20 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ---------- Web push subscriptions ----------
+// Browsers that opted in to receiving push notifications. The endpoint + keys
+// are what the `web-push` library needs to deliver a notification for an
+// event. One row per browser/device.
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});;
+
 // ---------- Payroll ----------
 // A run covers a pay period; entries snapshot each employee's salary at run
 // time so later salary edits don't rewrite history.
@@ -725,6 +926,11 @@ export const uploads = pgTable("uploads", {
   label: varchar("label", { length: 256 }).notNull(),
   documentKind: varchar("document_kind", { length: 32 }),
   documentId: integer("document_id"),
+  clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+  // Company-document categories: contract, compliance, insurance, finance,
+  // other. Free-text string to stay flexible.
+  category: varchar("category", { length: 64 }),
+  visibility: docVisibilityEnum("visibility").default("internal").notNull(),
   fileName: varchar("file_name", { length: 256 }).notNull(),
   mimeType: varchar("mime_type", { length: 128 }),
   size: integer("size").notNull().default(0),
@@ -971,6 +1177,9 @@ export const passwordResets = pgTable("password_resets", {
 
 export const usersRelations = relations(users, ({ many }) => ({
   resets: many(passwordResets),
+  approvedExpenses: many(expenses),
+  approvedSupplierBills: many(supplierBills),
+  createdActivities: many(clientActivities),
 }));
 
 export const passwordResetsRelations = relations(passwordResets, ({ one }) => ({

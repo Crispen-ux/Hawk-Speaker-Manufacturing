@@ -1,5 +1,8 @@
 import { requireActivePortalUser } from "@/lib/auth-portal";
 import { getPortalInvoices, getPortalQuotations, getPortalReceipts, getPortalCreditNotes } from "@/lib/portal-data";
+import { db } from "@/db";
+import { uploads } from "@/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { PageHeader, Card, EmptyState } from "@/components/ui";
 import { formatDate } from "@/lib/money";
 
@@ -16,11 +19,17 @@ export default async function PortalDocumentsPage() {
     getPortalCreditNotes(session.clientId),
   ]);
 
+  const sharedFiles = await db
+    .select()
+    .from(uploads)
+    .where(and(eq(uploads.clientId, session.clientId), inArray(uploads.visibility, ["client", "both"])));
+
   const docs: DocRow[] = [
     ...invoices.map((i) => ({ kind: "Invoice", ref: i.number, date: i.issueDate, href: `/api/portal/pdf/invoice/${i.id}` })),
     ...quotations.map((q) => ({ kind: "Quotation", ref: q.number, date: q.issueDate, href: `/api/portal/pdf/quotation/${q.id}` })),
     ...receipts.map((r) => ({ kind: "Receipt", ref: r.number, date: r.issueDate, href: `/api/portal/pdf/receipt/${r.id}` })),
     ...creditNotes.map((c) => ({ kind: "Credit note", ref: c.number, date: c.issueDate, href: `/api/portal/pdf/credit-note/${c.id}` })),
+    ...sharedFiles.map((u) => ({ kind: "File", ref: u.label, date: u.createdAt.toISOString().slice(0, 10), href: `/api/portal/files/${u.id}` })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   return (

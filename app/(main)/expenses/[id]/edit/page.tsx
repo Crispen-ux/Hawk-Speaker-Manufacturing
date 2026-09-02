@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { expenses, suppliers } from "@/db/schema";
+import { expenses, suppliers, jobCards } from "@/db/schema";
 import { updateExpense } from "@/lib/actions/expenses";
 import { getSettings } from "@/lib/numbering";
 import { getExpenseAccounts } from "@/lib/ledger";
@@ -17,6 +17,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
   if (!expense) notFound();
   const supplierRows = await db.select().from(suppliers).orderBy(suppliers.name);
   const accountRows = await getExpenseAccounts();
+  const openJobs = await db.select().from(jobCards).where(eq(jobCards.status, "open")).orderBy(jobCards.number);
   const update = updateExpense.bind(null, expenseId);
 
   return (
@@ -67,9 +68,28 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
                 ))}
               </select>
             </Field>
+            <Field label="VAT treatment">
+              <select name="vatTreatment" defaultValue={expense.vatTreatment} className={inputClass}>
+                <option value="standard">Standard</option>
+                <option value="zero_rated">Zero-rated</option>
+                <option value="exempt">Exempt</option>
+              </select>
+            </Field>
             <Field label="Reference (receipt / txn no.)">
               <input name="reference" defaultValue={expense.reference ?? ""} className={inputClass} />
             </Field>
+            {openJobs.length > 0 && (
+              <Field label="Job card (optional)">
+                <select name="jobCardId" defaultValue={expense.jobCardId ?? ""} className={inputClass}>
+                  <option value="">— None —</option>
+                  {openJobs.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.number} — {j.title}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
           </div>
           <Field label="Notes">
             <textarea name="notes" rows={3} defaultValue={expense.notes ?? ""} className={inputClass} />
