@@ -35,6 +35,9 @@ import {
   Landmark,
   UserCog,
   Zap,
+  Boxes,
+  FileStack,
+  Percent,
 } from "lucide-react";
 
 type NavLink = {
@@ -52,10 +55,12 @@ const links: NavLink[] = [
   { href: "/quotations", label: "Quotations", icon: FileSignature, module: "quotations" },
   { href: "/recurring", label: "Recurring", icon: Repeat, module: "recurring" },
   { href: "/job-cards", label: "Job cards", icon: Wrench, module: "jobCards" },
+  { href: "/bom", label: "BOM", icon: Boxes, module: "bom" },
   { href: "/delivery-notes", label: "Delivery notes", icon: Truck, module: "deliveryNotes" },
   { href: "/credit-notes", label: "Credit notes", icon: FileMinus, module: "creditNotes" },
   { href: "/receipts", label: "Receipts", icon: BadgeCheck, module: "receipts" },
   { href: "/purchase-orders", label: "Purchase orders", icon: ShoppingCart, module: "purchaseOrders" },
+  { href: "/supplier-bills", label: "Supplier bills", icon: FileStack, module: "supplierBills" },
   { href: "/statements", label: "Statements", icon: Receipt, module: "statements" },
   { href: "/payments", label: "Payments", icon: Banknote, module: "payments" },
   { href: "/clients", label: "Clients", icon: Users, module: "customers" },
@@ -71,6 +76,7 @@ const links: NavLink[] = [
   { href: "/notifications", label: "Notifications", icon: Bell, module: "notifications" },
   { href: "/accounting", label: "Accounting", icon: Landmark, module: "accounting" },
   { href: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
+  { href: "/reports/vat", label: "VAT report", icon: Percent, module: "vatReport" },
   { href: "/audit", label: "Audit log", icon: ScrollText, module: "auditLogs" },
   { href: "/users", label: "Users", icon: UserCog, module: "users", adminOnly: true },
   { href: "/automation", label: "Automation", icon: Zap, module: "automation", adminOnly: true },
