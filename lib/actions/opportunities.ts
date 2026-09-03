@@ -81,6 +81,14 @@ export async function setOpportunityStage(id: number, clientId: number, stage: (
   revalidatePath(`/clients/${clientId}`);
 }
 
+export async function setOpportunityStageForm(formData: FormData) {
+  const id = Number(formData.get("id"));
+  const clientId = Number(formData.get("clientId"));
+  const stage = String(formData.get("stage") ?? "new");
+  if (!(VALID_STAGES as readonly string[]).includes(stage)) return;
+  await setOpportunityStage(id, clientId, stage as (typeof VALID_STAGES)[number]);
+}
+
 export async function deleteOpportunity(id: number, clientId: number) {
   await db.delete(opportunities).where(eq(opportunities.id, id));
   await logAudit({ documentKind: "opportunity", documentId: id, action: "deleted", detail: String(id) });

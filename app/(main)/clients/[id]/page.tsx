@@ -1,15 +1,18 @@
 import { db } from "@/db";
-import { clients, invoices, quotations, portalUsers, clientActivities } from "@/db/schema";
+import { clients, invoices, quotations, portalUsers, clientActivities, opportunities, users } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { updateClient, deleteClient, createPortalAccess, togglePortalAccess, resetPortalPassword, deletePortalAccess } from "@/lib/actions/clients";
-import { addClientActivity, deleteClientActivity } from "@/lib/actions/client-activities";
+import { addClientActivity, setActivityStatus, deleteClientActivity } from "@/lib/actions/client-activities";
+import { createOpportunity, deleteOpportunity, setOpportunityStageForm } from "@/lib/actions/opportunities";
+import { getClientSummary } from "@/lib/crm";
 import { PageHeader, Field, inputClass, PrimaryButton, Card } from "@/components/ui";
 import StatusStamp from "@/components/StatusStamp";
 import ConfirmForm from "@/components/ConfirmForm";
-import { formatDate } from "@/lib/money";
+import { formatDate, formatMoney } from "@/lib/money";
 import { getEnabledModules } from "@/lib/enabled-modules";
+import { sessionUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,41 +24,58 @@ const ACTIVITY_LABELS: Record<string, string> = {
   manual: "Note",
 };
 
+const STAGE_LABELS: Record<string, string> = {
+  new: "New",
+  proposal: "Proposal",
+  negotiation: "Negotiation",
+  won: "Won",
+  lost: "Lost",
+};
+
+const STAGE_ORDER = ["new", "proposal", "negotiation", "won", "lost"] as const;
+
+function KpiCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "ok" | "bad" }) {
+  return (
+    <div className="rounded-lg border border-rule bg-white p-4">
+      <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">{label}</div>
+      <div className={`mt-1 font-display text-xl font-bold ${tone === "bad" ? "text-rust" : tone === "ok" ? "text-forest" : "text-navy"}`}>{value}</div>
+      {sub && <div className="mt-0.5 text-xs text-ink-soft">{sub}</div>}
+    </div>
+  );
+}
+
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const clientId = Number(id);
   const [client] = await db.select().from(clients).where(eq(clients.id, clientId));
   if (!client) notFound();
 
-  const clientInvoices = await db
-    .select()
-    .from(invoices)
-    .where(eq(invoices.clientId, clientId))
-    .orderBy(desc(invoices.createdAt));
+  const user = await sessionUser();
 
-  const clientQuotations = await db
-    .select()
-    .from(quotations)
-    .where(eq(quotations.clientId, clientId))
-    .orderBy(desc(quotations.createdAt));
+  const [clientInvoices, clientQuotations, activities, opportunityRows, usersRows, clientSummary] = await Promise.all([
+    db.select().from(invoices).where(eq(invoices.clientId, clientId)).orderBy(desc(invoices.createdAt)),
+    db.select().from(quotations).where(eq(quotations.clientId, clientId)).orderBy(desc(quotations.createdAt)),
+    db.select().from(clientActivities).where(eq(clientActivities.clientId, clientId)).orderBy(desc(clientActivities.createdAt)).limit(100),
+    db.select().from(opportunities).where(eq(opportunities.clientId, clientId)).orderBy(desc(opportunities.createdAt)),
+    db.select().from(users).orderBy(users.name),
+    getClientSummary(clientId),
+  ]);
 
-  const activities = await db
-    .select()
-    .from(clientActivities)
-    .where(eq(clientActivities.clientId, clientId))
-    .orderBy(desc(clientActivities.createdAt))
-    .limit(50);
-
-  const logActivity = addClientActivity; // bound via hidden clientId input
   const enabled = await getEnabledModules();
   const portalOn = enabled["clientPortal"] !== false;
+  const crmOn = enabled["crm"] !== false;
   const portalUsersRows = portalOn
     ? await db.select().from(portalUsers).where(eq(portalUsers.clientId, clientId)).orderBy(desc(portalUsers.createdAt))
     : [];
 
+  const openActivities = activities.filter((a) => a.status === "open").length;
+
   const updateWithId = updateClient.bind(null, clientId);
   const deleteWithId = deleteClient.bind(null, clientId);
   const createAccess = createPortalAccess.bind(null, clientId);
+
+  const addOpp = createOpportunity;
+  const logActivity = addClientActivity;
 
   return (
     <div>
@@ -99,6 +119,230 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </Card>
 
         <div className="space-y-8">
+          {crmOn && (
+            <>
+              {/* KPI cards */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                <KpiCard label="Total billed" value={formatMoney(clientSummary.totalBilled)} sub={`${clientSummary.invoiceCount} invoices`} />
+                <KpiCard label="Paid" value={formatMoney(clientSummary.paid)} tone="ok" />
+                <KpiCard label="Outstanding" value={formatMoney(clientSummary.outstanding)} tone={clientSummary.outstanding > 0 ? "bad" : "ok"} />
+                <KpiCard label="Overdue" value={formatMoney(clientSummary.overdue)} tone={clientSummary.overdue > 0 ? "bad" : undefined} />
+                <KpiCard label="Open quotes" value={formatMoney(clientSummary.openQuotationValue)} sub={`${clientSummary.openQuotationCount} open`} />
+                <KpiCard label="Pipeline" value={formatMoney(clientSummary.openOpportunityValue)} sub={`${clientSummary.openOpportunityCount} deals · ${formatMoney(clientSummary.wonOpportunityValue)} won`} />
+              </div>
+
+              {/* Opportunities / deal pipeline */}
+              <div>
+                <h2 className="mb-3 font-display text-lg font-bold text-navy">Deal pipeline</h2>
+                <Card className="mb-4">
+                  <form action={addOpp} className="space-y-3">
+                    <input type="hidden" name="clientId" value={clientId} />
+                    {user?.id && <input type="hidden" name="createdById" value={user.id} />}
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_0.8fr_1fr]">
+                      <Field label="Deal title">
+                        <input name="title" required className={inputClass} placeholder="e.g. Site maintenance contract" />
+                      </Field>
+                      <Field label="Value (R)">
+                        <input name="value" type="number" min="0" step="0.01" className={inputClass} placeholder="0.00" />
+                      </Field>
+                      <Field label="Stage">
+                        <select name="stage" className={inputClass}>
+                          {STAGE_ORDER.map((s) => (
+                            <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Close date">
+                        <input name="expectedCloseDate" type="date" className={inputClass} />
+                      </Field>
+                      <Field label="Linked quotation">
+                        <select name="quotationId" className={inputClass}>
+                          <option value="">— None —</option>
+                          {clientQuotations.map((q) => (
+                            <option key={q.id} value={q.id}>{q.number}</option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <Field label="Notes">
+                        <input name="description" className={inputClass} placeholder="What are we chasing?" />
+                      </Field>
+                      <PrimaryButton type="submit" className="self-end">Add deal</PrimaryButton>
+                    </div>
+                  </form>
+                </Card>
+
+                {opportunityRows.length === 0 ? (
+                  <p className="text-sm text-ink-soft">No deals tracked yet. Add one above or link an open quotation.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-rule">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
+                          <th className="px-4 py-2.5 font-medium">Deal</th>
+                          <th className="px-4 py-2.5 font-medium">Stage</th>
+                          <th className="px-4 py-2.5 font-medium">Value</th>
+                          <th className="px-4 py-2.5 font-medium">Close</th>
+                          <th className="px-4 py-2.5 font-medium">Quote</th>
+                          <th className="px-4 py-2.5 text-right font-medium"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {opportunityRows.map((o) => (
+                          <tr key={o.id} className="border-b border-rule last:border-b-0 hover:bg-paper-dim/40">
+                            <td className="px-4 py-2.5">
+                              <div className="font-medium text-ink">{o.title}</div>
+                              {o.description && <div className="text-xs text-ink-soft">{o.description}</div>}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <form action={setOpportunityStageForm}>
+                                <input type="hidden" name="id" value={o.id} />
+                                <input type="hidden" name="clientId" value={clientId} />
+                                <select name="stage" defaultValue={o.stage} onChange={(e) => e.currentTarget.form?.requestSubmit()} className="rounded border border-rule bg-white px-1.5 py-1 text-xs">
+                                  {STAGE_ORDER.map((s) => (
+                                    <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+                                  ))}
+                                </select>
+                              </form>
+                            </td>
+                            <td className={`px-4 py-2.5 font-mono ${o.stage === "won" ? "text-forest" : o.stage === "lost" ? "text-ink-soft line-through" : "text-ink"}`}>
+                              {formatMoney(o.value)}
+                            </td>
+                            <td className="px-4 py-2.5 text-ink-soft">{o.expectedCloseDate ? formatDate(o.expectedCloseDate) : "—"}</td>
+                            <td className="px-4 py-2.5">
+                              {o.quotationId ? (
+                                <Link href={`/quotations/${o.quotationId}`} className="font-mono text-forest hover:underline">
+                                  {clientQuotations.find((q) => q.id === o.quotationId)?.number ?? `#${o.quotationId}`}
+                                </Link>
+                              ) : (
+                                <span className="text-ink-soft">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <ConfirmForm action={deleteOpportunity.bind(null, o.id, clientId)} confirm={`Delete deal "${o.title}"?`} className="inline">
+                                <button type="submit" className="text-xs text-rust hover:underline">Remove</button>
+                              </ConfirmForm>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Activity log */}
+              <div>
+                <h2 className="mb-1 font-display text-lg font-bold text-navy">Activity log</h2>
+                <p className="mb-3 text-xs text-ink-soft">{openActivities} open follow-ups · {activities.length} entries</p>
+                <Card className="mb-5">
+                  <form action={logActivity} className="space-y-3">
+                    <input type="hidden" name="clientId" value={clientId} />
+                    {user?.id && <input type="hidden" name="createdById" value={user.id} />}
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[0.7fr_1.4fr_0.8fr_0.8fr_1fr]">
+                      <Field label="Type">
+                        <select name="type" defaultValue="manual" className={inputClass}>
+                          <option value="manual">Note</option>
+                          <option value="call">Call</option>
+                          <option value="meeting">Meeting</option>
+                          <option value="follow_up">Follow-up</option>
+                        </select>
+                      </Field>
+                      <Field label="Title">
+                        <input name="title" required className={inputClass} placeholder="e.g. Discussed quarterly maintenance plan" />
+                      </Field>
+                      <Field label="Status">
+                        <select name="status" className={inputClass}>
+                          <option value="open">Open</option>
+                          <option value="done">Done</option>
+                        </select>
+                      </Field>
+                      <Field label="Due date">
+                        <input name="dueDate" type="date" className={inputClass} />
+                      </Field>
+                      <Field label="Assignee">
+                        <select name="assignedToId" className={inputClass}>
+                          <option value="">— Unassigned —</option>
+                          {usersRows.map((u) => (
+                            <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                    <Field label="Details (optional)">
+                      <textarea name="description" rows={2} className={inputClass} />
+                    </Field>
+                    <PrimaryButton type="submit">Log activity</PrimaryButton>
+                  </form>
+                </Card>
+
+                {activities.length === 0 ? (
+                  <p className="text-sm text-ink-soft">No activity logged yet.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-rule">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
+                          <th className="px-4 py-2.5 font-medium">Date</th>
+                          <th className="px-4 py-2.5 font-medium">Type</th>
+                          <th className="px-4 py-2.5 font-medium">Entry</th>
+                          <th className="px-4 py-2.5 font-medium">Due</th>
+                          <th className="px-4 py-2.5 font-medium">Assignee</th>
+                          <th className="px-4 py-2.5 text-right font-medium"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activities.map((a) => (
+                          <tr key={a.id} className={`border-b border-rule last:border-b-0 ${a.status === "done" ? "opacity-60" : ""}`}>
+                            <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">
+                              {formatDate(a.createdAt.toISOString())}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${a.auto ? "bg-paper-dim text-ink-soft" : "bg-emerald-50 text-emerald-700"}`}>
+                                {ACTIVITY_LABELS[a.type] ?? a.type}{a.auto ? " · auto" : ""}
+                              </span>
+                              <span className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${a.status === "done" ? "bg-paper-dim text-ink-soft" : "bg-amber-50 text-amber-700"}`}>
+                                {a.status === "done" ? "Done" : "Open"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <div className="font-medium text-ink">{a.title}</div>
+                              {a.description && <div className="text-xs text-ink-soft">{a.description}</div>}
+                              {a.documentKind && (
+                                <div className="text-xs text-ink-soft">on {a.documentKind.replace(/_/g, " ")}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">
+                              {a.dueDate ? formatDate(a.dueDate) : "—"}
+                            </td>
+                            <td className="px-4 py-2.5 text-ink-soft">
+                              {usersRows.find((u) => u.id === a.assignedToId)?.name ?? usersRows.find((u) => u.id === a.assignedToId)?.email ?? "—"}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <div className="flex items-center justify-end gap-3">
+                                {!a.auto && (
+                                  <form action={setActivityStatus.bind(null, a.id, clientId, a.status === "done" ? "open" : "done")}>
+                                    <button type="submit" className="text-xs font-medium text-ink hover:underline">
+                                      {a.status === "done" ? "Reopen" : "Done"}
+                                    </button>
+                                  </form>
+                                )}
+                                <form action={deleteClientActivity.bind(null, a.id, clientId)}>
+                                  <button type="submit" className="text-xs text-rust hover:underline">Remove</button>
+                                </form>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           <div>
             <h2 className="mb-3 font-display text-lg font-bold text-navy">Invoices</h2>
             {clientInvoices.length === 0 ? (
@@ -144,75 +388,6 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                         <td className="px-4 py-2.5 text-ink-soft">{formatDate(q.issueDate)}</td>
                         <td className="px-4 py-2.5 text-right">
                           <StatusStamp status={q.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <h2 className="mb-3 font-display text-lg font-bold text-navy">Activity log</h2>
-            <Card className="mb-5">
-              <form action={logActivity} className="space-y-3">
-                <input type="hidden" name="clientId" value={clientId} />
-                <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
-                  <Field label="Type">
-                    <select name="type" defaultValue="manual" className={inputClass}>
-                      <option value="manual">Note</option>
-                      <option value="call">Call</option>
-                      <option value="meeting">Meeting</option>
-                      <option value="follow_up">Follow-up</option>
-                    </select>
-                  </Field>
-                  <Field label="Title">
-                    <input name="title" required className={inputClass} placeholder="e.g. Discussed quarterly maintenance plan" />
-                  </Field>
-                </div>
-                <Field label="Details (optional)">
-                  <textarea name="description" rows={2} className={inputClass} />
-                </Field>
-                <PrimaryButton type="submit">Log activity</PrimaryButton>
-              </form>
-            </Card>
-
-            {activities.length === 0 ? (
-              <p className="text-sm text-ink-soft">No activity logged yet.</p>
-            ) : (
-              <div className="overflow-hidden rounded-lg border border-rule">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
-                      <th className="px-4 py-2.5 font-medium">Date</th>
-                      <th className="px-4 py-2.5 font-medium">Type</th>
-                      <th className="px-4 py-2.5 font-medium">Entry</th>
-                      <th className="px-4 py-2.5 font-medium"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activities.map((a) => (
-                      <tr key={a.id} className="border-b border-rule last:border-b-0">
-                        <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">
-                          {formatDate(a.createdAt.toISOString())}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${a.auto ? "bg-paper-dim text-ink-soft" : "bg-emerald-50 text-emerald-700"}`}>
-                            {ACTIVITY_LABELS[a.type] ?? a.type}{a.auto ? " · auto" : ""}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="font-medium text-ink">{a.title}</div>
-                          {a.description && <div className="text-xs text-ink-soft">{a.description}</div>}
-                          {a.documentKind && (
-                            <div className="text-xs text-ink-soft">on {a.documentKind.replace(/_/g, " ")}</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <form action={deleteClientActivity.bind(null, a.id, clientId)}>
-                            <button type="submit" className="text-xs text-rust hover:underline">Remove</button>
-                          </form>
                         </td>
                       </tr>
                     ))}
