@@ -83,6 +83,16 @@ export const clientActivityTypeEnum = pgEnum("client_activity_type", [
   "manual",
 ]);
 
+export const activityStatusEnum = pgEnum("activity_status", ["open", "done"]);
+
+export const opportunityStageEnum = pgEnum("opportunity_stage", [
+  "new",
+  "proposal",
+  "negotiation",
+  "won",
+  "lost",
+]);
+
 export const docVisibilityEnum = pgEnum("doc_visibility", ["internal", "client", "both"]);
 
 export const clients = pgTable("clients", {
@@ -377,6 +387,7 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   creditNotes: many(creditNotes),
   receipts: many(receipts),
   activities: many(clientActivities),
+  opportunities: many(opportunities),
   uploads: many(uploads),
 }));
 
@@ -395,6 +406,9 @@ export const clientActivities = pgTable("client_activities", {
   type: clientActivityTypeEnum("type").default("manual").notNull(),
   title: varchar("title", { length: 256 }).notNull(),
   description: text("description"),
+  status: activityStatusEnum("status").default("open").notNull(),
+  dueDate: date("due_date"),
+  assignedToId: integer("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
   documentKind: varchar("document_kind", { length: 32 }),
   documentId: integer("document_id"),
   auto: boolean("auto").default(false).notNull(),
@@ -405,6 +419,34 @@ export const clientActivities = pgTable("client_activities", {
 export const clientActivitiesRelations = relations(clientActivities, ({ one }) => ({
   client: one(clients, { fields: [clientActivities.clientId], references: [clients.id] }),
   createdBy: one(users, { fields: [clientActivities.createdById], references: [users.id] }),
+  assignedTo: one(users, { fields: [clientActivities.assignedToId], references: [users.id] }),
+}));
+
+// ---------- Opportunities / deal pipeline ----------
+// A sale in progress with a client. Deals track where a quotation sits in the
+// sales funnel (new → proposal → negotiation → won/lost) and the expected
+// revenue, so the CRM can forecast per client and company-wide.
+
+export const opportunities = pgTable("opportunities", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .references(() => clients.id, { onDelete: "cascade" })
+    .notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  stage: opportunityStageEnum("stage").default("new").notNull(),
+  value: numeric("value", { precision: 12, scale: 2 }).default("0").notNull(),
+  expectedCloseDate: date("expected_close_date"),
+  quotationId: integer("quotation_id").references(() => quotations.id, { onDelete: "set null" }),
+  createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const opportunitiesRelations = relations(opportunities, ({ one }) => ({
+  client: one(clients, { fields: [opportunities.clientId], references: [clients.id] }),
+  quotation: one(quotations, { fields: [opportunities.quotationId], references: [quotations.id] }),
+  createdBy: one(users, { fields: [opportunities.createdById], references: [users.id] }),
 }));
 
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
