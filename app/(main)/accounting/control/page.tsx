@@ -1,0 +1,40 @@
+import Link from "next/link";
+import { db } from "@/db";
+import { bankAccounts } from "@/db/schema";
+import { asc } from "drizzle-orm";
+import { getAccountingPeriods, getBankTransactions } from "@/lib/accounting/control";
+import { getAccountingIntegrity, getChartOfAccounts, getPayables, getReceivables, getVatSummary } from "@/lib/ledger";
+import { createBankAccount, importBankCsv, setPeriodStatus, reconcileTransaction, unreconcileTransaction } from "@/lib/actions/accounting";
+
+export const dynamic = "force-dynamic";
+
+function money(value: unknown) { return `R${Number(value ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+
+export default async function AccountingControlPage() {
+  const [accounts, periods, banks, transactions, integrity, receivables, payables] = await Promise.all([
+    getChartOfAccounts(), getAccountingPeriods(), db.select().from(bankAccounts).orderBy(asc(bankAccounts.name)), getBankTransactions(), getAccountingIntegrity(), getReceivables(), getPayables(),
+  ]);
+  const vat = await getVatSummary(`${new Date().getUTCFullYear()}-01-01`, `${new Date().getUTCFullYear()}-12-31`);
+  return (
+    <div className="space-y-8">
+      <div className="flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">Phase 1 financial core</p><h1 className="mt-2 text-3xl font-semibold text-ink">Accounting control centre</h1><p className="mt-2 max-w-3xl text-sm text-ink-muted">Chart of accounts, AR/AP, VAT, bank reconciliation, period locks and ledger integrity all use the general journal as the source of truth.</p></div><Link href="/accounting" className="rounded-md border border-rule px-4 py-2 text-sm">Accounting home</Link></div>
+
+      <section className="grid gap-4 md:grid-cols-4">
+        {[['Trade receivables', money(receivables)], ['Trade payables', money(payables)], ['Output VAT', money(vat.outputVat)], ['Input VAT', money(vat.inputVat)]].map(([label, value]) => <div key={label} className="rounded-xl border border-rule bg-paper p-5"><p className="text-xs uppercase tracking-wider text-ink-muted">{label}</p><p className="mt-2 text-2xl font-semibold text-ink">{value}</p></div>)}
+      </section>
+
+      <section className="rounded-xl border border-rule bg-paper p-6"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold">Ledger integrity</h2><p className="text-sm text-ink-muted">Every journal entry must balance and system references must be unique.</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${integrity.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{integrity.ok ? "BALANCED" : "ATTENTION REQUIRED"}</span></div>{!integrity.ok && <ul className="mt-4 list-disc pl-5 text-sm text-red-700">{integrity.errors.slice(0, 12).map((error) => <li key={error}>{error}</li>)}</ul>}</section>
+
+      <section className="rounded-xl border border-rule bg-paper p-6"><h2 className="text-lg font-semibold">Chart of accounts</h2><div className="mt-4 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-rule text-left text-xs uppercase tracking-wider text-ink-muted"><th className="py-2">Code</th><th>Name</th><th>Type</th><th>System</th></tr></thead><tbody>{accounts.map((a) => <tr key={a.id} className="border-b border-rule/60"><td className="py-2 font-mono">{a.code}</td><td>{a.name}</td><td>{a.type}</td><td>{a.isSystem ? "Yes" : "No"}</td></tr>)}</tbody></table></div></section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-rule bg-paper p-6"><h2 className="text-lg font-semibold">Accounting periods</h2><p className="mt-1 text-sm text-ink-muted">Closed periods reject new postings and journal edits.</p><div className="mt-4 space-y-2">{periods.map((p) => <div key={String(p.id)} className="flex items-center justify-between rounded-lg border border-rule p-3"><div><p className="font-medium">{String(p.name)}</p><p className="text-xs text-ink-muted">{String(p.start_date)} → {String(p.end_date)}</p></div><form action={setPeriodStatus.bind(null, Number(p.id), p.status === "open" ? "closed" : "open")}><button className="rounded-md border border-rule px-3 py-1.5 text-xs">{p.status === "open" ? "Close" : "Re-open"}</button></form></div>)}</div></div>
+        <div className="rounded-xl border border-rule bg-paper p-6"><h2 className="text-lg font-semibold">Bank accounts</h2><form action={createBankAccount} className="mt-4 grid gap-2 sm:grid-cols-2"><input name="name" placeholder="Account name" className="rounded-md border border-rule px-3 py-2 text-sm" required /><input name="bankName" placeholder="Bank" className="rounded-md border border-rule px-3 py-2 text-sm" /><input name="accountNumber" placeholder="Account number" className="rounded-md border border-rule px-3 py-2 text-sm" /><input name="openingBalance" placeholder="Opening balance" className="rounded-md border border-rule px-3 py-2 text-sm" /><button className="rounded-md bg-navy px-3 py-2 text-sm font-semibold text-paper sm:col-span-2">Add bank account</button></form><div className="mt-5 space-y-2">{banks.map((b) => <div key={b.id} className="rounded-lg border border-rule p-3"><p className="font-medium">{b.name}</p><p className="text-xs text-ink-muted">{b.bankName ?? ""} · Opening {money(b.openingBalance)}</p></div>)}</div></div>
+      </section>
+
+      <section className="rounded-xl border border-rule bg-paper p-6"><h2 className="text-lg font-semibold">Bank reconciliation</h2><p className="mt-1 text-sm text-ink-muted">CSV format: date,description,reference,amount,in|out. Import bank lines, then match them to journal entries.</p><form action={importBankCsv} className="mt-4 space-y-3"><select name="bankAccountId" className="rounded-md border border-rule px-3 py-2 text-sm" required><option value="">Select bank account</option>{banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select><textarea name="csv" rows={5} placeholder="2026-09-01,Customer payment,INV-001,1150,in" className="w-full rounded-md border border-rule px-3 py-2 font-mono text-xs" required /><button className="rounded-md bg-navy px-4 py-2 text-sm font-semibold text-paper">Import transactions</button></form><div className="mt-6 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-rule text-left text-xs uppercase tracking-wider text-ink-muted"><th className="py-2">Date</th><th>Description</th><th>Amount</th><th>Status</th><th /></tr></thead><tbody>{transactions.slice(0, 50).map((t) => <tr key={String(t.id)} className="border-b border-rule/60"><td className="py-2">{String(t.txn_date)}</td><td>{String(t.description)}</td><td>{money(t.amount)}</td><td>{t.reconciled ? "Reconciled" : "Unmatched"}</td><td>{t.reconciled ? <form action={unreconcileTransaction.bind(null, Number(t.id))}><button className="text-xs underline">Unmatch</button></form> : <span className="text-xs text-ink-muted">Match in journal</span>}</td></tr>)}</tbody></table></div></section>
+
+      <section className="rounded-xl border border-rule bg-paper p-6"><h2 className="text-lg font-semibold">VAT control</h2><p className="mt-1 text-sm text-ink-muted">Current-year journal VAT: output {money(vat.outputVat)} less input {money(vat.inputVat)} = {money(vat.netVat)}. South Africa's current standard VAT rate is 15%.</p><div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-lg bg-paper-dim p-4"><p className="text-xs text-ink-muted">Output VAT</p><p className="mt-1 font-semibold">{money(vat.outputVat)}</p></div><div className="rounded-lg bg-paper-dim p-4"><p className="text-xs text-ink-muted">Input VAT</p><p className="mt-1 font-semibold">{money(vat.inputVat)}</p></div><div className="rounded-lg bg-paper-dim p-4"><p className="text-xs text-ink-muted">Net VAT</p><p className="mt-1 font-semibold">{money(vat.netVat)}</p></div></div></section>
+    </div>
+  );
+}
