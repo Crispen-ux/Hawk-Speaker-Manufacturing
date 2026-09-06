@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { accounts, journalEntries, journalLines } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { nextJournalNumber } from "@/lib/numbering";
+import { assertAccountingPeriodOpen, ensureAccountingInfrastructure } from "@/lib/accounting/control";
 
 export type PostingLine = {
   code: string;
@@ -13,6 +14,7 @@ export type PostingLine = {
 const EPSILON = 0.005;
 
 function money(value: number) {
+  if (!Number.isFinite(value)) throw new Error("Accounting amount must be a finite number");
   return Number(value.toFixed(2));
 }
 
@@ -28,12 +30,11 @@ function validatePosting(lines: PostingLine[]) {
     debit: money(line.debit ?? 0),
     credit: money(line.credit ?? 0),
   }));
-
   for (const line of normalised) {
     if (line.debit < 0 || line.credit < 0) throw new Error("Accounting amounts cannot be negative");
     if (line.debit > 0 && line.credit > 0) throw new Error("A posting line cannot contain both debit and credit");
+    if (line.debit === 0 && line.credit === 0) throw new Error("Accounting lines cannot both be zero");
   }
-
   const debit = money(normalised.reduce((sum, line) => sum + line.debit, 0));
   const credit = money(normalised.reduce((sum, line) => sum + line.credit, 0));
   if (debit <= 0) throw new Error("Accounting posting must be greater than zero");
@@ -43,23 +44,23 @@ function validatePosting(lines: PostingLine[]) {
   return normalised;
 }
 
-/**
- * Post one immutable accounting event. `reference` is an idempotency key,
- * e.g. `invoice:123:issued` or `payment:456:received`.
- */
+/** Post one immutable accounting event. `reference` is the idempotency key. */
 export async function postAccountingEvent(input: {
   date: string;
   memo: string;
   reference: string;
   lines: PostingLine[];
+  enforcePeriod?: boolean;
 }) {
+  await ensureAccountingInfrastructure();
   const lines = validatePosting(input.lines);
+  if (input.enforcePeriod !== false) await assertAccountingPeriodOpen(input.date);
+
   const existing = await db
     .select({ id: journalEntries.id })
     .from(journalEntries)
     .where(eq(journalEntries.reference, input.reference))
     .limit(1);
-
   if (existing.length) return existing[0].id;
 
   const byCode = await accountMap();
@@ -67,7 +68,6 @@ export async function postAccountingEvent(input: {
     const account = byCode.get(line.code);
     if (!account) throw new Error(`Accounting account ${line.code} does not exist`);
     return {
-      journalEntryId: 0,
       accountId: account.id,
       debit: line.debit.toFixed(2),
       credit: line.credit.toFixed(2),
@@ -75,8 +75,9 @@ export async function postAccountingEvent(input: {
     };
   });
 
-  const number = await nextJournalNumber();
   return db.transaction(async (tx) => {
+    // Prevent two concurrent requests from posting the same business event twice.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.reference}))`);
     const race = await tx
       .select({ id: journalEntries.id })
       .from(journalEntries)
@@ -84,6 +85,7 @@ export async function postAccountingEvent(input: {
       .limit(1);
     if (race.length) return race[0].id;
 
+    const number = await nextJournalNumber();
     const [entry] = await tx
       .insert(journalEntries)
       .values({
@@ -94,22 +96,12 @@ export async function postAccountingEvent(input: {
         reference: input.reference,
       })
       .returning({ id: journalEntries.id });
-
-    await tx.insert(journalLines).values(
-      resolved.map((line) => ({ ...line, journalEntryId: entry.id }))
-    );
-
+    await tx.insert(journalLines).values(resolved.map((line) => ({ ...line, journalEntryId: entry.id })));
     return entry.id;
   });
 }
 
-export async function postInvoiceIssued(input: {
-  invoiceId: number;
-  invoiceNumber: string;
-  date: string;
-  subtotal: number;
-  tax: number;
-}) {
+export async function postInvoiceIssued(input: { invoiceId: number; invoiceNumber: string; date: string; subtotal: number; tax: number }) {
   const total = money(input.subtotal + input.tax);
   if (total <= 0) return null;
   return postAccountingEvent({
@@ -118,18 +110,13 @@ export async function postInvoiceIssued(input: {
     reference: `invoice:${input.invoiceId}:issued`,
     lines: [
       { code: "1100", debit: total, memo: "Trade receivable" },
-      { code: "4000", credit: input.subtotal, memo: "Sales & services" },
+      ...(input.subtotal > 0 ? [{ code: "4000", credit: input.subtotal, memo: "Sales & services" }] : []),
       ...(input.tax > 0 ? [{ code: "2100", credit: input.tax, memo: "Output VAT" }] : []),
     ],
   });
 }
 
-export async function postPaymentReceived(input: {
-  paymentId: number;
-  invoiceNumber: string;
-  date: string;
-  amount: number;
-}) {
+export async function postPaymentReceived(input: { paymentId: number; invoiceNumber: string; date: string; amount: number }) {
   if (input.amount <= 0) throw new Error("Payment must be greater than zero");
   return postAccountingEvent({
     date: input.date,
@@ -142,13 +129,7 @@ export async function postPaymentReceived(input: {
   });
 }
 
-export async function postCreditNoteIssued(input: {
-  creditNoteId: number;
-  number: string;
-  date: string;
-  subtotal: number;
-  tax: number;
-}) {
+export async function postCreditNoteIssued(input: { creditNoteId: number; number: string; date: string; subtotal: number; tax: number }) {
   const total = money(input.subtotal + input.tax);
   if (total <= 0) return null;
   return postAccountingEvent({
@@ -156,9 +137,92 @@ export async function postCreditNoteIssued(input: {
     memo: `Credit note ${input.number} issued`,
     reference: `credit-note:${input.creditNoteId}:issued`,
     lines: [
-      { code: "4000", debit: input.subtotal, memo: "Sales reversal" },
+      ...(input.subtotal > 0 ? [{ code: "4000", debit: input.subtotal, memo: "Sales reversal" }] : []),
       ...(input.tax > 0 ? [{ code: "2100", debit: input.tax, memo: "Output VAT reversal" }] : []),
       { code: "1100", credit: total, memo: "Trade receivable" },
+    ],
+  });
+}
+
+export async function postExpenseApproved(input: { expenseId: number; date: string; amount: number; accountCode: string; inputVat?: number }) {
+  const amount = money(input.amount);
+  const inputVat = money(input.inputVat ?? 0);
+  const net = money(amount - inputVat);
+  if (amount <= 0) throw new Error("Expense must be greater than zero");
+  return postAccountingEvent({
+    date: input.date,
+    memo: `Expense ${input.expenseId} approved`,
+    reference: `expense:${input.expenseId}:approved`,
+    lines: [
+      ...(net > 0 ? [{ code: input.accountCode, debit: net, memo: "Expense" }] : []),
+      ...(inputVat > 0 ? [{ code: "2100", debit: inputVat, memo: "Input VAT" }] : []),
+      { code: "1000", credit: amount, memo: "Bank & cash" },
+    ],
+  });
+}
+
+export async function postSupplierBillApproved(input: {
+  supplierBillId: number;
+  number: string;
+  date: string;
+  subtotal: number;
+  tax: number;
+  inventoryAmount: number;
+  expenseAmount: number;
+}) {
+  const total = money(input.subtotal + input.tax);
+  const inventory = money(input.inventoryAmount);
+  const expense = money(input.expenseAmount);
+  const lines: PostingLine[] = [];
+  if (inventory > 0) lines.push({ code: "1200", debit: inventory, memo: "Inventory received" });
+  if (expense > 0) lines.push({ code: "5100", debit: expense, memo: "Supplier expense" });
+  if (input.tax > 0) lines.push({ code: "2100", debit: input.tax, memo: "Input VAT" });
+  lines.push({ code: "2000", credit: total, memo: "Trade payable" });
+  return postAccountingEvent({
+    date: input.date,
+    memo: `Supplier bill ${input.number} approved`,
+    reference: `supplier-bill:${input.supplierBillId}:approved`,
+    lines,
+  });
+}
+
+export async function postSupplierPayment(input: { supplierBillId: number; number: string; date: string; amount: number }) {
+  return postAccountingEvent({
+    date: input.date,
+    memo: `Payment of supplier bill ${input.number}`,
+    reference: `supplier-bill:${input.supplierBillId}:paid`,
+    lines: [
+      { code: "2000", debit: input.amount, memo: "Trade payable" },
+      { code: "1000", credit: input.amount, memo: "Bank & cash" },
+    ],
+  });
+}
+
+export async function postPayrollPaid(input: { runId: number; date: string; gross: number; tax: number; uif: number; other: number }) {
+  const net = money(input.gross - input.tax - input.uif - input.other);
+  const lines: PostingLine[] = [
+    { code: "5000", debit: input.gross, memo: "Salaries & wages" },
+    ...(input.tax + input.other > 0 ? [{ code: "2200", credit: input.tax + input.other, memo: "PAYE / deductions payable" }] : []),
+    ...(input.uif > 0 ? [{ code: "2300", credit: input.uif, memo: "UIF payable" }] : []),
+    ...(net > 0 ? [{ code: "1000", credit: net, memo: "Net payroll" }] : []),
+  ];
+  return postAccountingEvent({
+    date: input.date,
+    memo: `Payroll run ${input.runId} paid`,
+    reference: `payroll:${input.runId}:paid`,
+    lines,
+  });
+}
+
+export async function postAssetAcquired(input: { assetId: number; date: string; value: number; name: string }) {
+  if (input.value <= 0) return null;
+  return postAccountingEvent({
+    date: input.date,
+    memo: `Asset ${input.name} acquired`,
+    reference: `asset:${input.assetId}:acquired`,
+    lines: [
+      { code: "1300", debit: input.value, memo: "Property, plant & equipment" },
+      { code: "1000", credit: input.value, memo: "Bank & cash" },
     ],
   });
 }
