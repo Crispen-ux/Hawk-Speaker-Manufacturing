@@ -8,26 +8,10 @@ import { redirect } from "next/navigation";
 import { nextCreditNoteNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
 import { flashUrl } from "@/lib/flash";
-import { calcTotals } from "@/lib/money";
-import { postCreditNoteIssued } from "@/lib/accounting/posting";
 
 type ItemInput = { description: string; quantity: string; unitPrice: string };
 function parseItems(raw: string): ItemInput[] {
-  try {
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [];
-    return arr.filter((it) => it && String(it.description ?? "").trim()).map((it) => ({ description: String(it.description), quantity: String(it.quantity ?? "1"), unitPrice: String(it.unitPrice ?? "0") }));
-  } catch { return []; }
-}
-
-async function getCreditTotals(id: number) {
-  const [note] = await db.query.creditNotes.findMany({ where: (n, { eq }) => eq(n.id, id), with: { items: true } });
-  if (!note) throw new Error("Credit note not found");
-  return calcTotals(note.items, note.taxRate, note.discount);
-}
-
-function revalidateAccounting() {
-  for (const p of ["/accounting/journal", "/accounting/trial-balance", "/accounting/income-statement", "/accounting/balance-sheet"]) revalidatePath(p);
+  try { const arr = JSON.parse(raw); if (!Array.isArray(arr)) return []; return arr.filter((it) => it && String(it.description ?? "").trim()).map((it) => ({ description: String(it.description), quantity: String(it.quantity ?? "1"), unitPrice: String(it.unitPrice ?? "0") })); } catch { return []; }
 }
 
 export async function createCreditNote(formData: FormData) {
@@ -49,7 +33,7 @@ export async function createCreditNote(formData: FormData) {
   await logAudit({ documentKind: "creditNote", documentId: row.id, documentNumber: number, action: "created" });
   if (invoiceId) {
     const [inv] = await db.select({ number: invoices.number }).from(invoices).where(eq(invoices.id, invoiceId)).limit(1);
-    if (inv) { await logAudit({ documentKind: "invoice", documentId: invoiceId, documentNumber: inv.number, action: "credit_note_issued", detail: `${number} created` }); revalidatePath(`/invoices/${invoiceId}`); }
+    if (inv) { await logAudit({ documentKind: "invoice", documentId: invoiceId, documentNumber: inv.number, action: "credit_note_issued", detail: `${number} issued` }); revalidatePath(`/invoices/${invoiceId}`); }
   }
   revalidatePath("/credit-notes"); revalidatePath("/invoices");
   redirect(flashUrl(`/credit-notes/${row.id}`, "Credit note created"));
@@ -65,9 +49,6 @@ export async function updateCreditNote(id: number, formData: FormData) {
   const notes = String(formData.get("notes") ?? "") || null;
   const paymentTerms = String(formData.get("paymentTerms") ?? "") || null;
   const items = parseItems(String(formData.get("items") ?? "[]"));
-  const [existing] = await db.select({ status: creditNotes.status }).from(creditNotes).where(eq(creditNotes.id, id)).limit(1);
-  if (!existing) throw new Error("Credit note not found");
-  if (existing.status !== "draft") throw new Error("Issued credit notes cannot be edited");
   await db.update(creditNotes).set({ clientId, invoiceId, issueDate, taxRate, discount, notes, paymentTerms }).where(eq(creditNotes.id, id));
   await db.delete(creditNoteItems).where(eq(creditNoteItems.creditNoteId, id));
   if (items.length > 0) await db.insert(creditNoteItems).values(items.map((it, i) => ({ creditNoteId: id, description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, sortOrder: i })));
@@ -77,21 +58,13 @@ export async function updateCreditNote(id: number, formData: FormData) {
 }
 
 export async function setCreditNoteStatus(id: number, status: (typeof creditNotes.status.enumValues)[number]) {
-  const [note] = await db.select({ id: creditNotes.id, number: creditNotes.number, status: creditNotes.status, issueDate: creditNotes.issueDate }).from(creditNotes).where(eq(creditNotes.id, id)).limit(1);
-  if (!note) throw new Error("Credit note not found");
-  if (note.status === "cancelled" && status !== "cancelled") throw new Error("Cancelled credit notes cannot be reopened");
-  if (note.status === "draft" && status === "issued") {
-    const totals = await getCreditTotals(id);
-    await postCreditNoteIssued({ creditNoteId: id, number: note.number, date: note.issueDate, subtotal: totals.subtotal, tax: totals.tax });
-  }
   await db.update(creditNotes).set({ status }).where(eq(creditNotes.id, id));
   await logAudit({ documentKind: "creditNote", documentId: id, action: "status_changed", detail: `→ ${status}` });
-  revalidatePath("/credit-notes"); revalidatePath(`/credit-notes/${id}`); revalidateAccounting();
+  revalidatePath("/credit-notes"); revalidatePath(`/credit-notes/${id}`);
 }
 
 export async function deleteCreditNote(id: number) {
-  const [row] = await db.select({ number: creditNotes.number, status: creditNotes.status }).from(creditNotes).where(eq(creditNotes.id, id)).limit(1);
-  if (row && row.status !== "draft") throw new Error("Issued credit notes cannot be deleted; cancel them instead");
+  const [row] = await db.select({ number: creditNotes.number }).from(creditNotes).where(eq(creditNotes.id, id)).limit(1);
   if (row) await logAudit({ documentKind: "creditNote", documentId: id, documentNumber: row.number, action: "deleted" });
   await db.delete(creditNotes).where(eq(creditNotes.id, id));
   revalidatePath("/credit-notes"); revalidatePath("/invoices");
