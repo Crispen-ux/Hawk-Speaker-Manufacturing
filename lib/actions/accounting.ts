@@ -60,7 +60,7 @@ export async function createAccount(formData: FormData) {
   if (!ACCOUNT_TYPES.has(type)) throw new Error("Invalid account type");
   const [existing] = await db.select({ id: accounts.id }).from(accounts).where(eq(accounts.code, code)).limit(1);
   if (existing) throw new Error(`Account ${code} already exists`);
-  await db.insert(accounts).values({ code, name, type: type as "asset" | "liability" | "equity" | "income" | "expense", description, isSystem: false, active: true, sortOrder: Number(code) });
+  await db.insert(accounts).values({ code, name, type: type as "asset" | "liability" | "equity" | "income" | "expense", description, isSystem: false, active: true, sortOrder: 0 });
   revalidatePath("/accounting");
   revalidatePath("/accounting/control");
   revalidatePath("/accounting/chart-of-accounts");
