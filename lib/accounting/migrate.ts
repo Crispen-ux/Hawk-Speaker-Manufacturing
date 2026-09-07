@@ -1,17 +1,7 @@
 import { db } from "@/db";
 import { accounts, assets, bankAccounts, creditNotes, expenses, invoices, payrollRuns, supplierBills } from "@/db/schema";
 import { calcTotals, toNumber } from "@/lib/money";
-import {
-  postAccountingEvent,
-  postAssetAcquired,
-  postCreditNoteIssued,
-  postExpenseApproved,
-  postInvoiceIssued,
-  postPayrollPaid,
-  postPaymentReceived,
-  postSupplierBillApproved,
-  postSupplierPayment,
-} from "@/lib/accounting/posting";
+import { postAccountingEvent } from "@/lib/accounting/posting";
 
 const ACCOUNT_SEED = [
   ["1000", "Bank & cash", "asset", true, 10], ["1100", "Trade receivables", "asset", true, 20],
@@ -60,13 +50,11 @@ export async function ensureAccountingJournal() {
   migrationPromise = (async () => {
     await seedAccounts();
     const [bankRows, invoiceRows, creditRows, expenseRows, supplierBillRows, payrollRows, assetRows] = await Promise.all([
-      db.select().from(bankAccounts), db.query.invoices.findMany({ with: { items: true, payments: true }}),
+      db.select().from(bankAccounts), db.query.invoices.findMany({ with: { items: true, payments: true } }),
       db.query.creditNotes.findMany({ with: { items: true }}), db.select().from(expenses),
       db.query.supplierBills.findMany({ with: { items: true }}), db.query.payrollRuns.findMany({ with: { entries: true }}), db.select().from(assets),
     ]);
 
-    // Historical migration deliberately bypasses the current-period lock: it
-    // reconstructs past source transactions and is protected by idempotent refs.
     for (const bank of bankRows) {
       const opening = toNumber(bank.openingBalance); if (opening === 0) continue;
       await postAccountingEvent({ date: new Date().toISOString().slice(0, 10), memo: `Opening balance — ${bank.name}`, reference: `bank-opening:${bank.id}`, enforcePeriod: false,
@@ -76,46 +64,54 @@ export async function ensureAccountingJournal() {
     for (const invoice of invoiceRows) {
       if (invoice.status === "draft" || invoice.status === "cancelled") continue;
       const t = calcTotals(invoice.items, invoice.taxRate, invoice.discount);
+      const net = t.subtotal - t.discount;
+      if (t.total <= 0) continue;
       await postAccountingEvent({ date: invoice.issueDate, memo: `Invoice ${invoice.number} issued`, reference: `invoice:${invoice.id}:issued`, enforcePeriod: false,
-        lines: [{ code: "1100", debit: t.total, memo: "Trade receivable" }, ...(t.subtotal - t.discount > 0 ? [{ code: "4000", credit: t.subtotal - t.discount, memo: "Sales & services" }] : []), ...(t.tax > 0 ? [{ code: "2100", credit: t.tax, memo: "Output VAT" }] : [])] });
-      for (const payment of invoice.payments) await postAccountingEvent({ date: payment.date, memo: `Payment received for invoice ${invoice.number}`, reference: `payment:${payment.id}:received`, enforcePeriod: false, lines: [{ code: "1000", debit: toNumber(payment.amount), memo: "Bank & cash" }, { code: "1100", credit: toNumber(payment.amount), memo: "Trade receivable" }] });
+        lines: [{ code: "1100", debit: t.total, memo: "Trade receivable" }, ...(net > 0 ? [{ code: "4000", credit: net, memo: "Sales & services" }] : []), ...(t.tax > 0 ? [{ code: "2100", credit: t.tax, memo: "Output VAT" }] : [])] });
+      for (const payment of invoice.payments) if (toNumber(payment.amount) > 0) await postAccountingEvent({ date: payment.date, memo: `Payment received for invoice ${invoice.number}`, reference: `payment:${payment.id}:received`, enforcePeriod: false, lines: [{ code: "1000", debit: toNumber(payment.amount), memo: "Bank & cash" }, { code: "1100", credit: toNumber(payment.amount), memo: "Trade receivable" }] });
     }
     for (const note of creditRows) {
       if (note.status === "draft" || note.status === "cancelled") continue;
       const t = calcTotals(note.items, note.taxRate, note.discount);
       const net = t.subtotal - t.discount;
+      if (t.total <= 0) continue;
       await postAccountingEvent({ date: note.issueDate, memo: `Credit note ${note.number} issued`, reference: `credit-note:${note.id}:issued`, enforcePeriod: false,
         lines: [...(net > 0 ? [{ code: "4000", debit: net, memo: "Sales reversal" }] : []), ...(t.tax > 0 ? [{ code: "2100", debit: t.tax, memo: "Output VAT reversal" }] : []), { code: "1100", credit: t.total, memo: "Trade receivable" }] });
     }
     for (const expense of expenseRows) {
-      if (expense.status !== "approved") continue;
+      const amount = toNumber(expense.amount);
+      if (expense.status !== "approved" || amount <= 0) continue;
       await postAccountingEvent({ date: expense.date, memo: `Expense ${expense.id} approved`, reference: `expense:${expense.id}:approved`, enforcePeriod: false,
-        lines: [{ code: await expenseAccountCode(expense.accountId, expense.category), debit: toNumber(expense.amount), memo: "Expense" }, { code: "1000", credit: toNumber(expense.amount), memo: "Bank & cash" }] });
+        lines: [{ code: await expenseAccountCode(expense.accountId, expense.category), debit: amount, memo: "Expense" }, { code: "1000", credit: amount, memo: "Bank & cash" }] });
     }
     for (const bill of supplierBillRows) {
       if (bill.status !== "approved") continue;
       const t = billTotals(bill);
-      const inventoryAmount = bill.items.filter((item) => item.catalogItemId != null).reduce((sum, item) => sum + toNumber(item.quantity) * toNumber(item.unitCost), 0);
+      if (t.total <= 0) continue;
+      const inventoryAmount = Math.min(t.subtotal - t.discount, bill.items.filter((item) => item.catalogItemId != null).reduce((sum, item) => sum + toNumber(item.quantity) * toNumber(item.unitCost), 0));
+      const expenseAmount = Math.max(t.subtotal - t.discount - inventoryAmount, 0);
       await postAccountingEvent({ date: bill.billDate, memo: `Supplier bill ${bill.number} approved`, reference: `supplier-bill:${bill.id}:approved`, enforcePeriod: false,
         lines: [
           ...(inventoryAmount > 0 ? [{ code: "1200", debit: inventoryAmount, memo: "Inventory received" }] : []),
-          ...(t.subtotal - t.discount - inventoryAmount > 0 ? [{ code: "5100", debit: t.subtotal - t.discount - inventoryAmount, memo: "Supplier expense" }] : []),
+          ...(expenseAmount > 0 ? [{ code: "5100", debit: expenseAmount, memo: "Supplier expense" }] : []),
           ...(t.tax > 0 ? [{ code: "2100", debit: t.tax, memo: "Input VAT" }] : []),
           { code: "2000", credit: t.total, memo: "Trade payable" },
         ] });
-      if (bill.paid) await postAccountingEvent({ date: bill.paidDate ?? bill.billDate, memo: `Payment of supplier bill ${bill.number}`, reference: `supplier-bill:${bill.id}:paid`, enforcePeriod: false, lines: [{ code: "2000", debit: t.total, memo: "Trade payable" }, { code: "1000", credit: t.total, memo: "Bank & cash" }] });
+      if (bill.paid && t.total > 0) await postAccountingEvent({ date: bill.paidDate ?? bill.billDate, memo: `Payment of supplier bill ${bill.number}`, reference: `supplier-bill:${bill.id}:paid`, enforcePeriod: false, lines: [{ code: "2000", debit: t.total, memo: "Trade payable" }, { code: "1000", credit: t.total, memo: "Bank & cash" }] });
     }
     for (const run of payrollRows) {
       if (run.status !== "paid") continue;
       const t = run.entries.reduce((sum, entry) => ({ gross: sum.gross + toNumber(entry.salary) + toNumber(entry.additions), tax: sum.tax + toNumber(entry.tax), uif: sum.uif + toNumber(entry.uif), other: sum.other + toNumber(entry.otherDeductions) }), { gross: 0, tax: 0, uif: 0, other: 0 });
       const net = t.gross - t.tax - t.uif - t.other;
+      if (t.gross <= 0 || net < 0) continue;
       await postAccountingEvent({ date: run.payDate, memo: `Payroll run ${run.id} paid`, reference: `payroll:${run.id}:paid`, enforcePeriod: false,
         lines: [{ code: "5000", debit: t.gross, memo: "Salaries & wages" }, ...(t.tax + t.other > 0 ? [{ code: "2200", credit: t.tax + t.other, memo: "PAYE / deductions payable" }] : []), ...(t.uif > 0 ? [{ code: "2300", credit: t.uif, memo: "UIF payable" }] : []), ...(net > 0 ? [{ code: "1000", credit: net, memo: "Net payroll" }] : [])] });
     }
     for (const asset of assetRows) {
-      if (asset.status === "disposed" || !asset.purchaseDate || toNumber(asset.value) <= 0) continue;
+      const value = toNumber(asset.value);
+      if (asset.status === "disposed" || !asset.purchaseDate || value <= 0) continue;
       await postAccountingEvent({ date: asset.purchaseDate, memo: `Asset ${asset.name} acquired`, reference: `asset:${asset.id}:acquired`, enforcePeriod: false,
-        lines: [{ code: "1300", debit: toNumber(asset.value), memo: "Property, plant & equipment" }, { code: "1000", credit: toNumber(asset.value), memo: "Bank & cash" }] });
+        lines: [{ code: "1300", debit: value, memo: "Property, plant & equipment" }, { code: "1000", credit: value, memo: "Bank & cash" }] });
     }
     migrated = true;
   })();
