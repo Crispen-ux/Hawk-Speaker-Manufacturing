@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/accounting/control", label: "Control centre" },
+  { href: "/accounting/chart-of-accounts", label: "Chart of accounts" },
   { href: "/accounting/trial-balance", label: "Trial balance" },
   { href: "/accounting/income-statement", label: "Income statement" },
   { href: "/accounting/balance-sheet", label: "Balance sheet" },
