@@ -3,69 +3,34 @@ import JournalLinesEditor from "@/components/JournalLinesEditor";
 import { createJournalEntry } from "@/lib/actions/journal";
 import { db } from "@/db";
 import { accounts } from "@/db/schema";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { getSettings } from "@/lib/numbering";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewJournalEntryPage() {
   const settings = await getSettings();
-  const accountRows = await db.select().from(accounts).orderBy(asc(accounts.code));
-  const journalAccounts = accountRows.map((a) => ({
-    id: a.id,
-    code: a.code,
-    name: a.name,
-    type: a.type,
-  }));
+  const accountRows = await db.select().from(accounts).where(eq(accounts.active, true)).orderBy(asc(accounts.code));
+  const journalAccounts = accountRows.map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type }));
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader
-        eyebrow="General ledger"
-        title="New journal entry"
-      />
+      <PageHeader eyebrow="General ledger" title="New journal entry" />
       <Card>
         <form action={createJournalEntry} className="space-y-5">
           <input type="hidden" name="kind" value="manual" />
-
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Date">
-              <input
-                id="date"
-                name="date"
-                type="date"
-                required
-                defaultValue={new Date().toISOString().slice(0, 10)}
-                className={inputClass}
-              />
+              <input id="date" name="date" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} className={inputClass} />
             </Field>
-            <Field label="Reference (optional)">
-              <input
-                id="reference"
-                name="reference"
-                type="text"
-                placeholder="e.g. DEP-2026, CAP-02"
-                className={inputClass}
-              />
+            <Field label="Memo">
+              <input id="memo" name="memo" type="text" required placeholder="What is this entry for?" className={inputClass} />
             </Field>
           </div>
-
-          <Field label="Memo">
-            <input
-              id="memo"
-              name="memo"
-              type="text"
-              required
-              placeholder="What is this entry for?"
-              className={inputClass}
-            />
-          </Field>
-
           <div>
             <p className="mb-2 text-sm font-medium text-ink">Lines</p>
             <JournalLinesEditor accounts={journalAccounts} currency={settings.currency} />
           </div>
-
           <div className="flex items-center gap-3 pt-1">
             <PrimaryButton>Post entry</PrimaryButton>
             <GhostLink href="/accounting/journal">Cancel</GhostLink>
