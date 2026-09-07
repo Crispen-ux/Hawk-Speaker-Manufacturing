@@ -1,5 +1,7 @@
 import { PageHeader, Card } from "@/components/ui";
-import { getChartOfAccounts } from "@/lib/ledger";
+import { db } from "@/db";
+import { accounts } from "@/db/schema";
+import { asc } from "drizzle-orm";
 import { createAccount, toggleAccount } from "@/lib/actions/accounting";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +9,7 @@ export const dynamic = "force-dynamic";
 const types = ["asset", "liability", "equity", "income", "expense"] as const;
 
 export default async function ChartOfAccountsPage() {
-  const accounts = await getChartOfAccounts();
+  const accountRows = await db.select().from(accounts).orderBy(asc(accounts.sortOrder), asc(accounts.code));
   return (
     <div>
       <PageHeader eyebrow="Accounting structure" title="Chart of accounts" />
@@ -16,7 +18,7 @@ export default async function ChartOfAccountsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-rule bg-paper-dim font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft"><th className="px-4 py-3 text-left">Code</th><th className="px-4 py-3 text-left">Account</th><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-left">Status</th><th className="px-4 py-3 text-left">Source</th></tr></thead>
-              <tbody>{accounts.map((account) => <tr key={account.id} className="border-b border-rule last:border-b-0"><td className="px-4 py-3 font-mono">{account.code}</td><td className="px-4 py-3"><div className="font-medium">{account.name}</div>{account.description && <div className="text-xs text-ink-soft">{account.description}</div>}</td><td className="px-4 py-3 capitalize">{account.type}</td><td className="px-4 py-3">{account.active ? "Active" : "Inactive"}</td><td className="px-4 py-3">{account.isSystem ? "System" : "Custom"}</td></tr>)}</tbody>
+              <tbody>{accountRows.map((account) => <tr key={account.id} className="border-b border-rule last:border-b-0"><td className="px-4 py-3 font-mono">{account.code}</td><td className="px-4 py-3"><div className="font-medium">{account.name}</div>{account.description && <div className="text-xs text-ink-soft">{account.description}</div>}</td><td className="px-4 py-3 capitalize">{account.type}</td><td className="px-4 py-3">{account.active ? "Active" : "Inactive"}</td><td className="px-4 py-3">{account.isSystem ? "System" : "Custom"}</td></tr>)}</tbody>
             </table>
           </div>
         </Card>
@@ -32,7 +34,7 @@ export default async function ChartOfAccountsPage() {
           </form>
           <div className="mt-6 border-t border-rule pt-4">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">Account controls</p>
-            <div className="mt-3 space-y-2">{accounts.filter((a) => !a.isSystem).map((account) => <form key={account.id} action={toggleAccount.bind(null, account.id, !account.active)} className="flex items-center justify-between rounded-md border border-rule p-2.5"><span className="text-xs">{account.code} · {account.name}</span><button className="text-xs underline">{account.active ? "Deactivate" : "Activate"}</button></form>)}</div>
+            <div className="mt-3 space-y-2">{accountRows.filter((a) => !a.isSystem).map((account) => <form key={account.id} action={toggleAccount.bind(null, account.id, !account.active)} className="flex items-center justify-between rounded-md border border-rule p-2.5"><span className="text-xs">{account.code} · {account.name}</span><button className="text-xs underline">{account.active ? "Deactivate" : "Activate"}</button></form>)}</div>
           </div>
         </Card>
       </div>
