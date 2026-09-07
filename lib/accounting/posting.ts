@@ -1,8 +1,9 @@
 import { db } from "@/db";
 import { accounts, journalEntries, journalLines } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { nextJournalNumber } from "@/lib/numbering";
 import { assertAccountingPeriodOpen, ensureAccountingInfrastructure } from "@/lib/accounting/control";
+import { ensureLedgerSeed } from "@/lib/ledger";
 
 export type PostingLine = {
   code: string;
@@ -53,6 +54,7 @@ export async function postAccountingEvent(input: {
   enforcePeriod?: boolean;
 }) {
   await ensureAccountingInfrastructure();
+  await ensureLedgerSeed();
   const lines = validatePosting(input.lines);
   if (input.enforcePeriod !== false) await assertAccountingPeriodOpen(input.date);
 
@@ -76,7 +78,6 @@ export async function postAccountingEvent(input: {
   });
 
   return db.transaction(async (tx) => {
-    // Prevent two concurrent requests from posting the same business event twice.
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.reference}))`);
     const race = await tx
       .select({ id: journalEntries.id })
@@ -149,6 +150,7 @@ export async function postExpenseApproved(input: { expenseId: number; date: stri
   const inputVat = money(input.inputVat ?? 0);
   const net = money(amount - inputVat);
   if (amount <= 0) throw new Error("Expense must be greater than zero");
+  if (inputVat < 0 || inputVat > amount) throw new Error("Input VAT must be between zero and the expense total");
   return postAccountingEvent({
     date: input.date,
     memo: `Expense ${input.expenseId} approved`,
@@ -200,6 +202,7 @@ export async function postSupplierPayment(input: { supplierBillId: number; numbe
 
 export async function postPayrollPaid(input: { runId: number; date: string; gross: number; tax: number; uif: number; other: number }) {
   const net = money(input.gross - input.tax - input.uif - input.other);
+  if (input.gross <= 0 || input.tax < 0 || input.uif < 0 || input.other < 0 || net < 0) throw new Error("Invalid payroll amounts");
   const lines: PostingLine[] = [
     { code: "5000", debit: input.gross, memo: "Salaries & wages" },
     ...(input.tax + input.other > 0 ? [{ code: "2200", credit: input.tax + input.other, memo: "PAYE / deductions payable" }] : []),
