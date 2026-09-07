@@ -12,12 +12,12 @@ import { flashUrl } from "@/lib/flash";
 import { calcTotals, toNumber } from "@/lib/money";
 import { postInvoiceIssued, postPaymentReceived } from "@/lib/accounting/posting";
 
-type ItemInput = { description: string; quantity: string; unitPrice: string };
+type ItemInput = { description: string; quantity: string; unitPrice: string; vatTreatment: "standard" | "zero_rated" | "exempt" };
 function parseItems(raw: string): ItemInput[] {
   try {
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    return arr.filter((it) => it && String(it.description ?? "").trim()).map((it) => ({ description: String(it.description), quantity: String(it.quantity ?? "1"), unitPrice: String(it.unitPrice ?? "0") }));
+    return arr.filter((it) => it && String(it.description ?? "").trim()).map((it) => ({ description: String(it.description), quantity: String(it.quantity ?? "1"), unitPrice: String(it.unitPrice ?? "0"), vatTreatment: (it.vatTreatment === "zero_rated" || it.vatTreatment === "exempt" ? it.vatTreatment : "standard") }));
   } catch { return []; }
 }
 
@@ -28,7 +28,7 @@ export async function createInvoice(formData: FormData) {
   if (!clientId) throw new Error("Client is required"); if (!items.length) throw new Error("Add at least one line item");
   const number = await nextInvoiceNumber();
   const [row] = await db.insert(invoices).values({ number, clientId, issueDate, dueDate, taxRate, discount, notes, paymentTerms, status: "draft" }).returning({ id: invoices.id });
-  await db.insert(invoiceItems).values(items.map((it, i) => ({ invoiceId: row.id, description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, sortOrder: i })));
+  await db.insert(invoiceItems).values(items.map((it, i) => ({ invoiceId: row.id, description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, vatTreatment: it.vatTreatment, sortOrder: i })));
   await logAudit({ documentKind: "invoice", documentId: row.id, documentNumber: number, action: "created" });
   revalidatePath("/invoices"); redirect(flashUrl(`/invoices/${row.id}`, "Invoice created"));
 }
@@ -40,9 +40,10 @@ export async function updateInvoice(id: number, formData: FormData) {
   const clientId = Number(formData.get("clientId")); const issueDate = String(formData.get("issueDate")); const dueDate = String(formData.get("dueDate"));
   const taxRate = String(formData.get("taxRate") ?? "0"); const discount = String(formData.get("discount") ?? "0");
   const notes = String(formData.get("notes") ?? "") || null; const paymentTerms = String(formData.get("paymentTerms") ?? "") || null; const items = parseItems(String(formData.get("items") ?? "[]"));
+  if (!clientId || !issueDate || !dueDate || !items.length) throw new Error("Client, dates and at least one line item are required");
   await db.update(invoices).set({ clientId, issueDate, dueDate, taxRate, discount, notes, paymentTerms }).where(eq(invoices.id, id));
   await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
-  if (items.length) await db.insert(invoiceItems).values(items.map((it, i) => ({ invoiceId: id, description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, sortOrder: i })));
+  await db.insert(invoiceItems).values(items.map((it, i) => ({ invoiceId: id, description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, vatTreatment: it.vatTreatment, sortOrder: i })));
   await logAudit({ documentKind: "invoice", documentId: id, action: "updated" });
   revalidatePath("/invoices"); revalidatePath(`/invoices/${id}`); redirect(flashUrl(`/invoices/${id}`, "Invoice updated"));
 }
@@ -54,11 +55,11 @@ export async function setInvoiceStatus(id: number, status: (typeof invoices.stat
   if (invoice.status !== "draft" && status === "draft") throw new Error("Issued invoices cannot return to draft");
   if (wasDraft && status !== "draft" && status !== "cancelled") {
     const totals = calcTotals(invoice.items, invoice.taxRate, invoice.discount);
-    await postInvoiceIssued({ invoiceId: invoice.id, invoiceNumber: invoice.number, date: invoice.issueDate, subtotal: totals.subtotal, tax: totals.tax });
+    await postInvoiceIssued({ invoiceId: invoice.id, invoiceNumber: invoice.number, date: invoice.issueDate, subtotal: totals.subtotal - totals.discount, tax: totals.tax });
   }
   await db.update(invoices).set({ status }).where(eq(invoices.id, id));
   await logAudit({ documentKind: "invoice", documentId: id, action: "status_changed", detail: `→ ${status}` });
-  revalidatePath("/invoices"); revalidatePath(`/invoices/${id}`); revalidatePath("/accounting/trial-balance"); revalidatePath("/accounting/income-statement"); revalidatePath("/accounting/balance-sheet"); revalidatePath("/");
+  revalidatePath("/invoices"); revalidatePath(`/invoices/${id}`); revalidatePath("/accounting/control"); revalidatePath("/accounting/trial-balance"); revalidatePath("/accounting/income-statement"); revalidatePath("/accounting/balance-sheet"); revalidatePath("/");
 }
 
 export async function deleteInvoice(id: number) {
@@ -85,9 +86,9 @@ export async function recordInvoicePayment(invoiceId: number, data: { amount: st
   await logAudit({ documentKind: "invoice", documentId: invoiceId, documentNumber: invoice.number, action: "payment_recorded", detail: `${amount.toFixed(2)} received` });
   await logAudit({ documentKind: "receipt", documentId: receipt.id, documentNumber: number, action: "receipt_issued", detail: `for invoice ${invoice.number}` });
   void notify({ title: `Payment of ${amount.toFixed(2)} received`, message: `For invoice ${invoice.number}`, documentKind: "receipt", documentId: receipt.id, level: "success" });
-  revalidatePath(`/invoices/${invoiceId}`); revalidatePath("/invoices"); revalidatePath("/receipts"); revalidatePath("/payments"); revalidatePath("/accounting/trial-balance"); revalidatePath("/accounting/balance-sheet"); revalidatePath("/");
+  revalidatePath(`/invoices/${invoiceId}`); revalidatePath("/invoices"); revalidatePath("/receipts"); revalidatePath("/payments"); revalidatePath("/accounting/control"); revalidatePath("/accounting/trial-balance"); revalidatePath("/accounting/balance-sheet"); revalidatePath("/");
 }
 
-export async function deletePayment(paymentId: number, invoiceId: number) {
+export async function deletePayment(_paymentId: number, _invoiceId: number) {
   throw new Error("Payments are immutable financial records. Record a refund/reversal instead of deleting the payment.");
 }
