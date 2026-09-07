@@ -6,13 +6,14 @@ export function toNumber(v: string | number | null | undefined) {
 
 export function formatMoney(v: string | number | null | undefined, currency = "R") {
   const n = toNumber(v);
-  return `${currency} ${n.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return `${currency} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export type LineItem = { quantity: string | number; unitPrice: string | number };
+export type LineItem = {
+  quantity: string | number;
+  unitPrice: string | number;
+  vatTreatment?: "standard" | "zero_rated" | "exempt" | string | null;
+};
 
 export function calcSubtotal(items: LineItem[]) {
   return items.reduce((sum, it) => sum + toNumber(it.quantity) * toNumber(it.unitPrice), 0);
@@ -20,10 +21,17 @@ export function calcSubtotal(items: LineItem[]) {
 
 export function calcTotals(items: LineItem[], taxRate: string | number, discount: string | number) {
   const subtotal = calcSubtotal(items);
-  const afterDiscount = Math.max(subtotal - toNumber(discount), 0);
-  const tax = afterDiscount * (toNumber(taxRate) / 100);
+  const discountAmount = Math.min(Math.max(toNumber(discount), 0), subtotal);
+  const afterDiscount = subtotal - discountAmount;
+  const rate = Math.max(toNumber(taxRate), 0) / 100;
+  const taxableAfterDiscount = items.reduce((sum, item) => {
+    const lineTotal = Math.max(toNumber(item.quantity) * toNumber(item.unitPrice), 0);
+    const discountedLine = subtotal > 0 ? lineTotal * (afterDiscount / subtotal) : 0;
+    return sum + (item.vatTreatment === "standard" || !item.vatTreatment ? discountedLine : 0);
+  }, 0);
+  const tax = taxableAfterDiscount * rate;
   const total = afterDiscount + tax;
-  return { subtotal, discount: toNumber(discount), tax, total };
+  return { subtotal, discount: discountAmount, tax, total };
 }
 
 export function formatDate(d: string | Date | null | undefined) {
