@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { accounts, bankAccounts, journalEntries } from "@/db/schema";
+import { accounts, bankAccounts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { importBankTransactions, reconcileBankTransaction, setAccountingPeriodStatus, unreconcileBankTransaction } from "@/lib/accounting/control";
@@ -70,10 +70,6 @@ export async function toggleAccount(id: number, active: boolean) {
   const [account] = await db.select({ isSystem: accounts.isSystem }).from(accounts).where(eq(accounts.id, id)).limit(1);
   if (!account) throw new Error("Account not found");
   if (account.isSystem) throw new Error("System accounts cannot be deactivated");
-  if (!active) {
-    const [used] = await db.select({ id: journalEntries.id }).from(journalEntries).innerJoin(accounts, eq(accounts.id, id)).limit(1);
-    void used;
-  }
   await db.update(accounts).set({ active }).where(eq(accounts.id, id));
   revalidatePath("/accounting/chart-of-accounts");
   revalidatePath("/accounting/control");
