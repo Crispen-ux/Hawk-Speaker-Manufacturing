@@ -37,8 +37,9 @@ export async function ensureAccountingInfrastructure() {
   `);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS bank_transactions_reconcile_idx ON bank_transactions(bank_account_id, txn_date, reconciled)`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS journal_entries_reference_idx ON journal_entries(reference)`);
-  const periods = await db.execute(sql`SELECT id FROM accounting_periods LIMIT 1`);
-  if (periods.rows.length === 0) {
+  const currentDate = new Date().toISOString().slice(0, 10);
+  const covering = await db.execute(sql`SELECT id FROM accounting_periods WHERE ${currentDate}::date BETWEEN start_date AND end_date LIMIT 1`);
+  if (covering.rows.length === 0) {
     const year = new Date().getUTCFullYear();
     await db.execute(sql`INSERT INTO accounting_periods (name, start_date, end_date, status) VALUES (${`FY ${year}`}, ${`${year}-01-01`}, ${`${year}-12-31`}, 'open')`);
   }
@@ -47,11 +48,7 @@ export async function ensureAccountingInfrastructure() {
 
 export async function assertAccountingPeriodOpen(date: string) {
   await ensureAccountingInfrastructure();
-  const result = await db.execute(sql`
-    SELECT id FROM accounting_periods
-    WHERE ${date}::date BETWEEN start_date AND end_date AND status = 'open'
-    ORDER BY start_date DESC LIMIT 1
-  `);
+  const result = await db.execute(sql`SELECT id FROM accounting_periods WHERE ${date}::date BETWEEN start_date AND end_date AND status = 'open' ORDER BY start_date DESC LIMIT 1`);
   if (result.rows.length === 0) throw new Error(`Accounting period is closed or does not exist for ${date}`);
 }
 
@@ -82,14 +79,7 @@ export async function getBankTransactions(bankAccountId?: number) {
   return result.rows;
 }
 
-export async function importBankTransactions(rows: Array<{
-  bankAccountId: number;
-  date: string;
-  description: string;
-  reference?: string | null;
-  amount: number;
-  direction: "in" | "out";
-}>) {
+export async function importBankTransactions(rows: Array<{ bankAccountId: number; date: string; description: string; reference?: string | null; amount: number; direction: "in" | "out" }>) {
   await ensureAccountingInfrastructure();
   if (!rows.length) return 0;
   let inserted = 0;
@@ -110,8 +100,9 @@ export async function reconcileBankTransaction(id: number, journalEntryId: numbe
   if (bankTxn.reconciled) throw new Error("Bank transaction is already reconciled");
 
   const journal = await db.execute(sql`
-    SELECT je.id, je.date, COALESCE(SUM(jl.debit) FILTER (WHERE a.code = '1000'), 0) AS bank_debit,
-           COALESCE(SUM(jl.credit) FILTER (WHERE a.code = '1000'), 0) AS bank_credit
+    SELECT je.id, je.date,
+      COALESCE(SUM(jl.debit) FILTER (WHERE a.code = '1000'), 0) AS bank_debit,
+      COALESCE(SUM(jl.credit) FILTER (WHERE a.code = '1000'), 0) AS bank_credit
     FROM journal_entries je
     LEFT JOIN journal_lines jl ON jl.journal_entry_id = je.id
     LEFT JOIN accounts a ON a.id = jl.account_id
@@ -125,9 +116,7 @@ export async function reconcileBankTransaction(id: number, journalEntryId: numbe
   const credit = Number(j.bank_credit ?? 0);
   const journalAmount = bankTxn.direction === "in" ? debit : credit;
   const oppositeAmount = bankTxn.direction === "in" ? credit : debit;
-  if (Math.abs(journalAmount - Number(bankTxn.amount)) >= 0.01 || oppositeAmount > 0.005) {
-    throw new Error(`Bank transaction does not match journal entry ${journalEntryId} on account 1000`);
-  }
+  if (Math.abs(journalAmount - Number(bankTxn.amount)) >= 0.01 || oppositeAmount > 0.005) throw new Error(`Bank transaction does not match journal entry ${journalEntryId} on account 1000`);
   if (String(j.date).slice(0, 10) !== String(bankTxn.txn_date).slice(0, 10)) throw new Error("Bank transaction date must match the journal entry date");
   const used = await db.execute(sql`SELECT id FROM bank_transactions WHERE matched_journal_entry_id = ${journalEntryId} LIMIT 1`);
   if (used.rows.length) throw new Error("That journal entry is already reconciled to another bank transaction");
