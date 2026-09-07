@@ -17,29 +17,37 @@ async function validateLines(kind: string, lines: LineInput[]) {
   if (lines.length < 2) throw new Error("A journal entry needs at least two lines");
   for (const l of lines) { if (l.debit < 0 || l.credit < 0) throw new Error("Amounts cannot be negative"); if (l.debit > 0 && l.credit > 0) throw new Error("A line can't have both a debit and a credit"); }
   const debit = lines.reduce((s, l) => s + l.debit, 0); const credit = lines.reduce((s, l) => s + l.credit, 0); if (Math.abs(debit - credit) > 0.01) throw new Error(`Entry doesn't balance — debits ${debit.toFixed(2)} vs credits ${credit.toFixed(2)}`); if (debit <= 0) throw new Error("Entry total must be greater than zero");
-  if (kind === "opening") { const accs = await db.select().from(accounts).where(inArray(accounts.id, lines.map((l) => l.accountId))); const bad = accs.filter((a) => a.type !== "asset" && a.type !== "liability" && a.type !== "equity"); if (bad.length) throw new Error(`Opening balances can only use asset, liability or equity accounts (${bad.map((b) => b.code).join(", ")})`); }
+  const ids = [...new Set(lines.map((l) => l.accountId))];
+  const accs = await db.select({ id: accounts.id, code: accounts.code, active: accounts.active, type: accounts.type }).from(accounts).where(inArray(accounts.id, ids));
+  if (accs.length !== ids.length) throw new Error("One or more journal accounts do not exist");
+  const inactive = accs.filter((a) => !a.active);
+  if (inactive.length) throw new Error(`Inactive account(s) cannot receive postings: ${inactive.map((a) => a.code).join(", ")}`);
+  if (kind === "opening") {
+    const bad = accs.filter((a) => a.type !== "asset" && a.type !== "liability" && a.type !== "equity");
+    if (bad.length) throw new Error(`Opening balances can only use asset, liability or equity accounts (${bad.map((b) => b.code).join(", ")})`);
+  }
 }
 function lineValues(lines: LineInput[], journalEntryId: number) { return lines.map((l) => ({ journalEntryId, accountId: l.accountId, debit: l.debit.toFixed(2), credit: l.credit.toFixed(2), memo: l.memo })); }
-function revalidateAccounting() { for (const p of ["/accounting/journal", "/accounting/trial-balance", "/accounting/income-statement", "/accounting/balance-sheet"]) revalidatePath(p); }
+function revalidateAccounting() { for (const p of ["/accounting", "/accounting/control", "/accounting/chart-of-accounts", "/accounting/journal", "/accounting/trial-balance", "/accounting/income-statement", "/accounting/balance-sheet"]) revalidatePath(p); }
 
 export async function createJournalEntry(formData: FormData) {
-  const kind = String(formData.get("kind") ?? "manual") === "opening" ? "opening" : "manual"; const memo = String(formData.get("memo") ?? "").trim(); const date = String(formData.get("date") ?? ""); const reference = String(formData.get("reference") ?? "").trim() || null; const lines = parseLines(String(formData.get("lines") ?? "[]"));
+  const kind = String(formData.get("kind") ?? "manual") === "opening" ? "opening" : "manual"; const memo = String(formData.get("memo") ?? "").trim(); const date = String(formData.get("date") ?? ""); const lines = parseLines(String(formData.get("lines") ?? "[]"));
   if (!memo || !date) throw new Error("Memo and date are required"); await validateLines(kind, lines); await assertAccountingPeriodOpen(date);
-  if (reference) throw new Error("Reference is reserved for system accounting events.");
   const number = await nextJournalNumber();
   const entry = await db.transaction(async (tx) => { const [je] = await tx.insert(journalEntries).values({ number, date, kind, memo, reference: null }).returning({ id: journalEntries.id }); await tx.insert(journalLines).values(lineValues(lines, je.id)); return je; });
   await logAudit({ documentKind: "journalEntry", documentId: entry.id, documentNumber: number, action: "created", detail: memo }); revalidateAccounting(); redirect(flashUrl(`/accounting/journal/${entry.id}`, "Journal entry created"));
 }
 
 export async function updateJournalEntry(id: number, formData: FormData) {
-  const [existing] = await db.select({ reference: journalEntries.reference, kind: journalEntries.kind }).from(journalEntries).where(eq(journalEntries.id, id)).limit(1); if (!existing) throw new Error("Journal entry not found"); if (existing.reference) throw new Error("System accounting entries are immutable. Use a reversal/correction transaction.");
+  const [existing] = await db.select({ reference: journalEntries.reference, date: journalEntries.date }).from(journalEntries).where(eq(journalEntries.id, id)).limit(1); if (!existing) throw new Error("Journal entry not found"); if (existing.reference) throw new Error("System accounting entries are immutable. Use a reversal/correction transaction.");
   const kind = String(formData.get("kind") ?? "manual") === "opening" ? "opening" : "manual"; const memo = String(formData.get("memo") ?? "").trim(); const date = String(formData.get("date") ?? ""); const lines = parseLines(String(formData.get("lines") ?? "[]"));
-  if (!memo || !date) throw new Error("Memo and date are required"); await validateLines(kind, lines); await assertAccountingPeriodOpen(date);
+  if (!memo || !date) throw new Error("Memo and date are required"); await validateLines(kind, lines); await assertAccountingPeriodOpen(existing.date); await assertAccountingPeriodOpen(date);
   await db.transaction(async (tx) => { await tx.update(journalEntries).set({ date, kind, memo }).where(eq(journalEntries.id, id)); await tx.delete(journalLines).where(eq(journalLines.journalEntryId, id)); await tx.insert(journalLines).values(lineValues(lines, id)); });
   await logAudit({ documentKind: "journalEntry", documentId: id, action: "updated", detail: memo }); revalidateAccounting(); redirect(flashUrl(`/accounting/journal/${id}`, "Journal entry updated"));
 }
 
 export async function deleteJournalEntry(id: number) {
   const [entry] = await db.select().from(journalEntries).where(eq(journalEntries.id, id)).limit(1); if (!entry) return; if (entry.reference) throw new Error("System accounting entries are immutable. Use a reversal/correction transaction.");
+  await assertAccountingPeriodOpen(entry.date);
   await db.delete(journalEntries).where(eq(journalEntries.id, id)); await logAudit({ documentKind: "journalEntry", documentId: id, documentNumber: entry.number, action: "deleted", detail: entry.memo }); revalidateAccounting(); redirect(flashUrl("/accounting/journal", "Journal entry deleted"));
 }
