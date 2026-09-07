@@ -34,9 +34,10 @@ export async function updateCreditNote(id: number, formData: FormData) {
   const clientId = Number(formData.get("clientId")); const invoiceIdRaw = formData.get("invoiceId"); const invoiceId = invoiceIdRaw ? Number(invoiceIdRaw) : null;
   const issueDate = String(formData.get("issueDate")); const taxRate = String(formData.get("taxRate") ?? "0"); const discount = String(formData.get("discount") ?? "0");
   const notes = String(formData.get("notes") ?? "") || null; const paymentTerms = String(formData.get("paymentTerms") ?? "") || null; const items = parseItems(String(formData.get("items") ?? "[]"));
+  if (!clientId || !issueDate || !items.length) throw new Error("Client, date and at least one line item are required");
   await db.update(creditNotes).set({ clientId, invoiceId, issueDate, taxRate, discount, notes, paymentTerms }).where(eq(creditNotes.id, id));
   await db.delete(creditNoteItems).where(eq(creditNoteItems.creditNoteId, id));
-  if (items.length) await db.insert(creditNoteItems).values(items.map((it, i) => ({ creditNoteId: id, description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, sortOrder: i })));
+  await db.insert(creditNoteItems).values(items.map((it, i) => ({ creditNoteId: id, description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, sortOrder: i })));
   await logAudit({ documentKind: "creditNote", documentId: id, action: "updated" });
   revalidatePath("/credit-notes"); revalidatePath(`/credit-notes/${id}`); redirect(flashUrl(`/credit-notes/${id}`, "Credit note updated"));
 }
@@ -47,7 +48,7 @@ export async function setCreditNoteStatus(id: number, status: (typeof creditNote
   if (note.status !== "draft" && status === "draft") throw new Error("Issued credit notes cannot return to draft");
   if (note.status === "draft" && (status === "issued" || status === "applied")) {
     const t = calcTotals(note.items, note.taxRate, note.discount);
-    await postCreditNoteIssued({ creditNoteId: note.id, number: note.number, date: note.issueDate, subtotal: t.subtotal, tax: t.tax });
+    await postCreditNoteIssued({ creditNoteId: note.id, number: note.number, date: note.issueDate, subtotal: t.subtotal - t.discount, tax: t.tax });
   }
   await db.update(creditNotes).set({ status }).where(eq(creditNotes.id, id));
   await logAudit({ documentKind: "creditNote", documentId: id, action: "status_changed", detail: `→ ${status}` });
@@ -56,7 +57,7 @@ export async function setCreditNoteStatus(id: number, status: (typeof creditNote
     if (inv) await logAudit({ documentKind: "invoice", documentId: note.invoiceId, documentNumber: inv.number, action: "credit_note_issued", detail: note.number });
     revalidatePath(`/invoices/${note.invoiceId}`);
   }
-  revalidatePath("/credit-notes"); revalidatePath(`/credit-notes/${id}`); revalidatePath("/accounting/trial-balance"); revalidatePath("/accounting/income-statement"); revalidatePath("/accounting/balance-sheet");
+  revalidatePath("/credit-notes"); revalidatePath(`/credit-notes/${id}`); revalidatePath("/accounting/control"); revalidatePath("/accounting/trial-balance"); revalidatePath("/accounting/income-statement"); revalidatePath("/accounting/balance-sheet");
 }
 
 export async function deleteCreditNote(id: number) {
