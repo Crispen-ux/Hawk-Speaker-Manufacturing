@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { accounts, bankAccounts, journalEntries } from "@/db/schema";
-import { asc, and, eq, lte, gte } from "drizzle-orm";
+import { accounts, bankAccounts } from "@/db/schema";
+import { asc, and, eq } from "drizzle-orm";
 import { toNumber } from "@/lib/money";
 import { ensureAccountingJournal } from "@/lib/accounting/migrate";
 import { ensureAccountingInfrastructure, getAccountingPeriods } from "@/lib/accounting/control";
@@ -97,7 +97,9 @@ export type ProfitLine = { label: string; amount: number; code?: string; kind: "
 export type IncomeStatement = { from: string; to: string; revenue: ProfitLine[]; expenses: ProfitLine[]; revenueTotal: number; expenseTotal: number; netProfit: number };
 
 export async function getIncomeStatement(from: string, to: string): Promise<IncomeStatement> {
-  await ensureLedgerSeed(); await ensureAccountingJournal();
+  await ensureLedgerSeed();
+  await ensureAccountingInfrastructure();
+  await ensureAccountingJournal();
   const [accountRows, entries] = await Promise.all([
     db.select().from(accounts),
     db.query.journalEntries.findMany({ with: { lines: true } }),
@@ -105,20 +107,25 @@ export async function getIncomeStatement(from: string, to: string): Promise<Inco
   const byCode = new Map(accountRows.map((a) => [a.id, a]));
   const revenueByCode = new Map<string, ProfitLine>();
   const expenseByCode = new Map<string, ProfitLine>();
+
   for (const entry of entries) {
-    if (entry.kind !== "manual" || entry.date < from || entry.date > to) continue;
+    if (entry.date < from || entry.date > to) continue;
     for (const line of entry.lines) {
-      const account = byCode.get(line.accountId); if (!account) continue;
+      const account = byCode.get(line.accountId);
+      if (!account) continue;
       const signed = toNumber(line.debit) - toNumber(line.credit);
       if (account.type === "income") {
         const current = revenueByCode.get(account.code) ?? { label: account.name, amount: 0, code: account.code, kind: "revenue" as const };
-        current.amount += -signed; revenueByCode.set(account.code, current);
+        current.amount += -signed;
+        revenueByCode.set(account.code, current);
       } else if (account.type === "expense") {
         const current = expenseByCode.get(account.code) ?? { label: account.name, amount: 0, code: account.code, kind: "expense" as const };
-        current.amount += signed; expenseByCode.set(account.code, current);
+        current.amount += signed;
+        expenseByCode.set(account.code, current);
       }
     }
   }
+
   const revenue = Array.from(revenueByCode.values()).filter((l) => Math.abs(l.amount) >= 0.01).sort((a, b) => (a.code ?? "").localeCompare(b.code ?? ""));
   const expenses = Array.from(expenseByCode.values()).filter((l) => Math.abs(l.amount) >= 0.01).sort((a, b) => (a.code ?? "").localeCompare(b.code ?? ""));
   const revenueTotal = revenue.reduce((s, l) => s + l.amount, 0);
@@ -131,7 +138,9 @@ export type BalanceSheet = { asOf: string; assets: BsLine[]; liabilities: BsLine
 
 export async function getBalanceSheet(asOf: string): Promise<BalanceSheet> {
   const l = await computeLedger(asOf);
-  const assets: BsLine[] = []; const liabilities: BsLine[] = []; const equity: BsLine[] = [];
+  const assets: BsLine[] = [];
+  const liabilities: BsLine[] = [];
+  const equity: BsLine[] = [];
   for (const row of l.rows) {
     if (row.type === "asset" && row.signed > 0) assets.push({ label: row.name, amount: row.signed, code: row.code });
     if (row.type === "liability" && row.signed < 0) liabilities.push({ label: row.name, amount: -row.signed, code: row.code });
@@ -142,32 +151,42 @@ export async function getBalanceSheet(asOf: string): Promise<BalanceSheet> {
   const retained = l.retainedEarnings + l.netProfit;
   if (Math.abs(capital) >= 0.01) equity.push({ label: capital >= 0 ? "Owner's capital" : "Capital deficit", amount: capital, code: "3000" });
   if (Math.abs(retained) >= 0.01) equity.push({ label: retained >= 0 ? "Retained earnings / current profit" : "Accumulated loss", amount: retained, code: "3100" });
-  return { asOf, assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity: totalAssets - totalLiabilities };
+  const totalEquity = equity.reduce((s, x) => s + x.amount, 0);
+  return { asOf, assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity };
 }
 
 export async function getReceivables(asOf?: string) {
+  await ensureLedgerSeed();
   await ensureAccountingJournal();
+  const [account] = await db.select({ id: accounts.id }).from(accounts).where(eq(accounts.code, "1100")).limit(1);
+  if (!account) return 0;
   const entries = await db.query.journalEntries.findMany({ with: { lines: true } });
   let balance = 0;
-  for (const entry of entries) if (dateOk(entry.date, asOf)) for (const line of entry.lines) if (line.accountId === (await db.select({ id: accounts.id }).from(accounts).where(eq(accounts.code, "1100")).limit(1))[0]?.id) balance += toNumber(line.debit) - toNumber(line.credit);
-  return balance;
+  for (const entry of entries) if (dateOk(entry.date, asOf)) for (const line of entry.lines) if (line.accountId === account.id) balance += toNumber(line.debit) - toNumber(line.credit);
+  return Number(balance.toFixed(2));
 }
 
 export async function getPayables(asOf?: string) {
+  await ensureLedgerSeed();
   await ensureAccountingJournal();
   const [account] = await db.select({ id: accounts.id }).from(accounts).where(eq(accounts.code, "2000")).limit(1);
+  if (!account) return 0;
   const entries = await db.query.journalEntries.findMany({ with: { lines: true } });
-  return entries.filter((e) => dateOk(e.date, asOf)).flatMap((e) => e.lines).filter((l) => l.accountId === account?.id).reduce((s, l) => s + toNumber(l.credit) - toNumber(l.debit), 0);
+  const balance = entries.filter((e) => dateOk(e.date, asOf)).flatMap((e) => e.lines).filter((l) => l.accountId === account.id).reduce((s, l) => s + toNumber(l.credit) - toNumber(l.debit), 0);
+  return Number(balance.toFixed(2));
 }
 
 export async function getVatSummary(from: string, to: string) {
+  await ensureLedgerSeed();
   await ensureAccountingJournal();
   const [account] = await db.select({ id: accounts.id }).from(accounts).where(eq(accounts.code, "2100")).limit(1);
+  if (!account) return { from, to, outputVat: 0, inputVat: 0, netVat: 0 };
   const entries = await db.query.journalEntries.findMany({ with: { lines: true } });
-  let output = 0; let input = 0;
+  let output = 0;
+  let input = 0;
   for (const entry of entries) {
     if (entry.date < from || entry.date > to) continue;
-    for (const line of entry.lines) if (line.accountId === account?.id) { output += toNumber(line.credit); input += toNumber(line.debit); }
+    for (const line of entry.lines) if (line.accountId === account.id) { output += toNumber(line.credit); input += toNumber(line.debit); }
   }
   return { from, to, outputVat: Number(output.toFixed(2)), inputVat: Number(input.toFixed(2)), netVat: Number((output - input).toFixed(2)) };
 }
@@ -177,14 +196,21 @@ export async function getAccountingIntegrity() {
   const entries = await db.query.journalEntries.findMany({ with: { lines: true } });
   const errors: string[] = [];
   const references = new Map<string, number>();
-  let debitTotal = 0; let creditTotal = 0;
+  let debitTotal = 0;
+  let creditTotal = 0;
   for (const entry of entries) {
-    let debit = 0; let credit = 0;
+    let debit = 0;
+    let credit = 0;
     if (entry.reference) references.set(entry.reference, (references.get(entry.reference) ?? 0) + 1);
     if (entry.lines.length < 2) errors.push(`${entry.number}: fewer than two journal lines`);
-    for (const line of entry.lines) { debit += toNumber(line.debit); credit += toNumber(line.credit); if (toNumber(line.debit) > 0 && toNumber(line.credit) > 0) errors.push(`${entry.number}: line has both debit and credit`); }
+    for (const line of entry.lines) {
+      debit += toNumber(line.debit);
+      credit += toNumber(line.credit);
+      if (toNumber(line.debit) > 0 && toNumber(line.credit) > 0) errors.push(`${entry.number}: line has both debit and credit`);
+    }
     if (Math.abs(debit - credit) >= 0.01) errors.push(`${entry.number}: Dr ${debit.toFixed(2)} / Cr ${credit.toFixed(2)}`);
-    debitTotal += debit; creditTotal += credit;
+    debitTotal += debit;
+    creditTotal += credit;
   }
   for (const [reference, count] of references) if (count > 1) errors.push(`Duplicate accounting reference: ${reference}`);
   const difference = Number((debitTotal - creditTotal).toFixed(2));
