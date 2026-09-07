@@ -12,7 +12,7 @@ function money(value: unknown) { return `R${Number(value ?? 0).toLocaleString("e
 
 export default async function AccountingControlPage() {
   const [accounts, periods, banks, transactions, integrity, receivables, payables, journals] = await Promise.all([
-    getChartOfAccounts(), getAccountingPeriods(), db.select().from(bankAccounts).where(undefined).orderBy(asc(bankAccounts.name)), getBankTransactions(), getAccountingIntegrity(), getReceivables(), getPayables(),
+    getChartOfAccounts(), getAccountingPeriods(), db.select().from(bankAccounts).orderBy(asc(bankAccounts.name)), getBankTransactions(), getAccountingIntegrity(), getReceivables(), getPayables(),
     db.select({ id: journalEntries.id, number: journalEntries.number, date: journalEntries.date, memo: journalEntries.memo }).from(journalEntries).orderBy(desc(journalEntries.date), desc(journalEntries.id)).limit(100),
   ]);
   const vat = await getVatSummary(`${new Date().getUTCFullYear()}-01-01`, `${new Date().getUTCFullYear()}-12-31`);
