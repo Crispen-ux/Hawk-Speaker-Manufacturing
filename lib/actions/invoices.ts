@@ -77,8 +77,12 @@ export async function addPayment(invoiceId: number, formData: FormData) {
 
 export async function recordInvoicePayment(invoiceId: number, data: { amount: string; date: string; method?: string | null; note?: string | null }) {
   const amount = toNumber(data.amount); if (amount <= 0) throw new Error("Payment must be greater than zero");
-  const [invoice] = await db.select({ number: invoices.number, clientId: invoices.clientId, status: invoices.status }).from(invoices).where(eq(invoices.id, invoiceId)).limit(1);
+  const [invoice] = await db.query.invoices.findMany({ where: eq(invoices.id, invoiceId), with: { items: true, payments: true } });
   if (!invoice) throw new Error("Invoice not found"); if (invoice.status === "draft" || invoice.status === "cancelled") throw new Error("Only issued invoices can receive payments");
+  const total = calcTotals(invoice.items, invoice.taxRate, invoice.discount).total;
+  const received = invoice.payments.reduce((sum, payment) => sum + toNumber(payment.amount), 0);
+  const outstanding = Math.max(total - received, 0);
+  if (amount > outstanding + 0.01) throw new Error(`Payment exceeds the outstanding invoice balance of ${outstanding.toFixed(2)}`);
   const [payment] = await db.insert(payments).values({ invoiceId, amount: amount.toFixed(2), date: data.date, method: data.method ?? null, note: data.note ?? null }).returning({ id: payments.id });
   await postPaymentReceived({ paymentId: payment.id, invoiceNumber: invoice.number, date: data.date, amount });
   const number = await nextReceiptNumber();
