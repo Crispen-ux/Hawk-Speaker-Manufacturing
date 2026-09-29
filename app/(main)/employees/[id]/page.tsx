@@ -71,7 +71,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                 <div className="font-mono text-ink">{employee.idNumber || "—"}</div>
               </div>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-rule pt-4 text-sm text-ink-soft">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 border-t border-rule pt-4 text-sm text-ink-soft">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.15em]">Email</div>
                 <a href={`mailto:${employee.email}`} className="text-forest hover:underline">

@@ -56,14 +56,14 @@ export default async function QuotationsPage({
           action={<LinkButton href="/quotations/new">Create a quotation</LinkButton>}
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-rule">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-rule">
+          <table className="w-full min-w-[460px] text-sm">
             <thead>
               <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
                 <th className="px-4 py-2.5 font-medium">Number</th>
                 <th className="px-4 py-2.5 font-medium">Client</th>
-                <th className="px-4 py-2.5 font-medium">Issued</th>
-                <th className="px-4 py-2.5 font-medium">Expires</th>
+                <th className="hidden px-4 py-2.5 font-medium md:table-cell">Issued</th>
+                <th className="hidden px-4 py-2.5 font-medium md:table-cell">Expires</th>
                 <th className="px-4 py-2.5 text-right font-medium">Total</th>
                 <th className="px-4 py-2.5 text-right font-medium">Status</th>
               </tr>
@@ -77,8 +77,8 @@ export default async function QuotationsPage({
                     </Link>
                   </td>
                   <td className="px-4 py-3">{q.client?.name}</td>
-                  <td className="px-4 py-3 text-ink-soft">{formatDate(q.issueDate)}</td>
-                  <td className="px-4 py-3 text-ink-soft">{formatDate(q.expiryDate)}</td>
+                  <td className="hidden px-4 py-3 text-ink-soft md:table-cell">{formatDate(q.issueDate)}</td>
+                  <td className="hidden px-4 py-3 text-ink-soft md:table-cell">{formatDate(q.expiryDate)}</td>
                   <td className="px-4 py-3 text-right font-mono">{money(q.totals.total)}</td>
                   <td className="px-4 py-3 text-right">
                     <StatusStamp status={q.status} />

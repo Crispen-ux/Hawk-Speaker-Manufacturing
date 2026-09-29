@@ -20,6 +20,10 @@ const PUBLIC_PREFIXES = [
   "/api/portal",
   "/_next",
   "/favicon",
+  // PWA: manifest, service worker and offline shell must load without a session.
+  "/manifest",
+  "/sw",
+  "/offline",
 ];
 
 const ADMIN_ONLY_PREFIXES = ["/settings", "/users"];

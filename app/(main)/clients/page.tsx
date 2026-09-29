@@ -27,8 +27,8 @@ export default async function ClientsPage() {
           action={<LinkButton href="/clients/new">Add your first client</LinkButton>}
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-rule">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-rule">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
                 <th className="px-4 py-2.5 font-medium">Name</th>
@@ -36,7 +36,7 @@ export default async function ClientsPage() {
                 <th className="px-4 py-2.5 text-right font-medium">Billed</th>
                 <th className="px-4 py-2.5 text-right font-medium">Outstanding</th>
                 <th className="px-4 py-2.5 text-right font-medium">Open quotes</th>
-                <th className="px-4 py-2.5 font-medium">Last activity</th>
+                <th className="hidden px-4 py-2.5 font-medium md:table-cell">Last activity</th>
               </tr>
             </thead>
             <tbody>
@@ -62,7 +62,7 @@ export default async function ClientsPage() {
                         <span className="text-ink-soft">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-ink-soft whitespace-nowrap">
+                    <td className="hidden px-4 py-3 text-ink-soft whitespace-nowrap md:table-cell">
                       {s?.lastActivityAt ? formatDate(s.lastActivityAt.toISOString()) : "—"}
                     </td>
                   </tr>

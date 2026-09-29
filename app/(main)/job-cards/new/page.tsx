@@ -36,7 +36,7 @@ export default async function NewJobCardPage() {
       <PageHeader eyebrow="Field work" title="New job card" />
       <Card className="max-w-3xl">
         <form action={createJobCard} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Client">
               <select name="clientId" required className={inputClass}>
                 <option value="" disabled>
@@ -62,7 +62,7 @@ export default async function NewJobCardPage() {
             <textarea name="description" rows={3} className={inputClass} placeholder="Fault reported, diagnosis, work carried out…" />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Technician">
               <input name="technician" className={inputClass} placeholder="J. Moyo" />
             </Field>

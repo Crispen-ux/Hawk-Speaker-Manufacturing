@@ -72,8 +72,8 @@ const clientName = new Map(clientRows.map((c) => [c.id, c.name]));
       {paymentRows.length === 0 ? (
         <EmptyState title="No payments yet" hint="Payments recorded against invoices appear here, each minting a numbered receipt." action={<LinkButton href="/payments/new">Record a payment</LinkButton>} />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-rule">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-rule">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
                 <th className="px-4 py-2.5 font-medium">Date</th>

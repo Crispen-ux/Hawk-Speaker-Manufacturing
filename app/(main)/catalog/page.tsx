@@ -29,8 +29,8 @@ export default async function CatalogPage() {
           action={<LinkButton href="/catalog/new">Add your first item</LinkButton>}
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-rule">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-rule">
+          <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
                 <th className="px-4 py-2.5 font-medium">Name</th>

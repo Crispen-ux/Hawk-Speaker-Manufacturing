@@ -45,7 +45,7 @@ export default async function NewInvoicePage({
       <PageHeader eyebrow="Accounts receivable" title="New invoice" />
       <Card className="max-w-3xl">
         <form action={createInvoice} className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Client">
               <select name="clientId" required defaultValue={client ?? ""} className={inputClass}>
                 <option value="" disabled>

@@ -57,7 +57,7 @@ export default async function NewCreditNotePage({
       <Card className="max-w-3xl">
         <form action={createCreditNote} className="space-y-5">
           <input type="hidden" name="invoiceId" value={invoice ? String(invoice.id) : ""} />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Client">
               <select name="clientId" required defaultValue={defaultClient} className={inputClass}>
                 <option value="" disabled>

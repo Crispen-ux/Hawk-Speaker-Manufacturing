@@ -40,7 +40,7 @@ export default async function NewPurchaseOrderPage() {
       <PageHeader eyebrow="Procurement" title="New purchase order" />
       <Card className="max-w-3xl">
         <form action={createPurchaseOrder} className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Supplier">
               <select name="supplierId" required className={inputClass}>
                 <option value="" disabled>

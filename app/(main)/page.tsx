@@ -62,7 +62,7 @@ export default async function DashboardPage() {
     <div>
       <PageHeader eyebrow="Overview" title="Dashboard" />
 
-      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
         <Stat label="Outstanding" value={money(outstanding)} />
         <Stat label="Overdue" value={money(overdueTotal)} accent={overdueTotal > 0 ? "text-rust" : undefined} />
         <Stat label="Paid this month" value={money(paidThisMonth)} accent="text-success" />
@@ -72,8 +72,8 @@ export default async function DashboardPage() {
       {overdue.length > 0 && (
         <div className="mb-8">
         <h2 className="mb-3 font-display text-lg font-bold text-rust">Needs attention</h2>
-          <div className="overflow-hidden rounded-lg border border-rust/30">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border border-rust/30">
+            <table className="w-full min-w-[440px] text-sm">
               <tbody>
                 {overdue.map((inv) => (
                   <tr key={inv.id} className="border-b border-rule last:border-b-0 hover:bg-rust/5">
@@ -102,8 +102,8 @@ export default async function DashboardPage() {
             View all →
           </Link>
         </div>
-        <div className="overflow-hidden rounded-lg border border-rule">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-rule">
+          <table className="w-full min-w-[440px] text-sm">
             <tbody>
               {recent.map((inv) => (
                 <tr key={inv.id} className="border-b border-rule last:border-b-0 hover:bg-paper-dim/60">
@@ -113,7 +113,7 @@ export default async function DashboardPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-2.5">{inv.client?.name}</td>
-                  <td className="px-4 py-2.5 text-ink-soft">{formatDate(inv.issueDate)}</td>
+                  <td className="hidden px-4 py-2.5 text-ink-soft md:table-cell">{formatDate(inv.issueDate)}</td>
                   <td className="px-4 py-2.5 text-right font-mono">{money(inv.computed.total)}</td>
                   <td className="px-4 py-2.5 text-right">
                     <StatusStamp status={inv.computed.effectiveStatus} />

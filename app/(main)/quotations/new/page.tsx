@@ -45,7 +45,7 @@ export default async function NewQuotationPage({
       <PageHeader eyebrow="Proposals" title="New quotation" />
       <Card className="max-w-3xl">
         <form action={createQuotation} className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Client">
               <select name="clientId" required defaultValue={client ?? ""} className={inputClass}>
                 <option value="" disabled>

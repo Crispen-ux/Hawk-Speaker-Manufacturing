@@ -82,7 +82,7 @@ export default async function VatReportPage({
         {formatDate(from)} &mdash; {formatDate(to)} · {basis} basis
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 max-w-4xl">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 max-w-4xl">
         <Card className="p-4">
           <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">Output tax</div>
           <div className="mt-1 font-display text-xl font-bold text-navy">{money(report.totalOutputTax)}</div>
@@ -103,7 +103,7 @@ export default async function VatReportPage({
         </Card>
       </div>
 
-      <div className="mb-4 max-w-4xl grid grid-cols-3 gap-4">
+      <div className="mb-4 max-w-4xl grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-md border border-rule bg-paper-dim p-3 text-center">
           <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">Standard rated</div>
           <div className="mt-1 font-mono text-sm font-semibold text-ink">{money(report.standardRatedTotal)}</div>

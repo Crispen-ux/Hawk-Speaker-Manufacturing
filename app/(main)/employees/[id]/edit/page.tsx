@@ -21,7 +21,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
       <PageHeader eyebrow="People" title={`Edit ${employee.firstName} ${employee.lastName}`} />
       <Card className="max-w-2xl">
         <form action={update} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="First name">
               <input name="firstName" required defaultValue={employee.firstName} className={inputClass} />
             </Field>

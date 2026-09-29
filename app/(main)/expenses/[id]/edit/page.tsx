@@ -25,7 +25,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
       <PageHeader eyebrow="Money out" title="Edit expense" />
       <Card className="max-w-2xl">
         <form action={update} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Description">
               <input name="description" required defaultValue={expense.description} className={inputClass} />
             </Field>

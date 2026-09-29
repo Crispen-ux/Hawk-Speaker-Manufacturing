@@ -56,7 +56,7 @@ export default async function IncomeStatementPage({
         Profit and loss for the selected period. Revenue is net of VAT; VAT sits on the balance sheet.
       </p>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="p-5">
           <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-success">Revenue</div>
           <div className="mt-2 font-display text-2xl font-bold text-forest">{money(stmt.revenueTotal)}</div>

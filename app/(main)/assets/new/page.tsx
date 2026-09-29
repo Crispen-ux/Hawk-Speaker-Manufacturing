@@ -11,7 +11,7 @@ export default async function NewAssetPage() {
       <PageHeader eyebrow="Assets" title="Add asset" />
       <Card className="max-w-2xl">
         <form action={createAsset} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name">
               <input name="name" required className={inputClass} placeholder="e.g. Laptop – Dell XPS 13" />
             </Field>

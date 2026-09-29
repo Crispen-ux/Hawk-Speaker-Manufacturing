@@ -17,7 +17,7 @@ export default async function NewBomPage() {
       <PageHeader eyebrow="Production" title="New bill of materials" />
       <Card className="max-w-4xl">
         <form action={createBom} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name">
               <input name="name" required className={inputClass} placeholder="Server room AC service" />
             </Field>

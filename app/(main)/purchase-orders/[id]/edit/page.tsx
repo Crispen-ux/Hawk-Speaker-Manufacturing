@@ -29,7 +29,7 @@ export default async function EditPurchaseOrderPage({ params }: { params: Promis
       <PageHeader eyebrow="Procurement" title={`Edit ${po.number}`} />
       <Card className="max-w-3xl">
         <form action={updateWithId} className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Supplier">
               <select name="supplierId" required defaultValue={po.supplierId} className={inputClass}>
                 {allSuppliers.map((s) => (

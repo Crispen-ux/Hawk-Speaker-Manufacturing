@@ -96,7 +96,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             <Field label="Billing address">
               <textarea name="address" defaultValue={client.address ?? ""} rows={3} className={inputClass} />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Company registration">
                 <input name="registrationNumber" defaultValue={client.registrationNumber ?? ""} className={inputClass} />
               </Field>

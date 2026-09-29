@@ -28,7 +28,7 @@ export default async function EditCatalogItemPage({ params }: { params: Promise<
           <Field label="Description (optional)">
             <textarea name="description" defaultValue={item.description ?? ""} rows={2} className={inputClass} />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Unit price">
               <input name="unitPrice" defaultValue={item.unitPrice} required inputMode="decimal" className={inputClass} />
             </Field>

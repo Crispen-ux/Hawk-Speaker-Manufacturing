@@ -31,7 +31,7 @@ export default async function EditDeliveryNotePage({ params }: { params: Promise
       <PageHeader eyebrow="Logistics" title={`Edit ${dn.number}`} />
       <Card className="max-w-3xl">
         <form action={updateWithId} className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Client">
               <select name="clientId" required defaultValue={dn.clientId} className={inputClass}>
                 {allClients.map((c) => (
@@ -60,7 +60,7 @@ export default async function EditDeliveryNotePage({ params }: { params: Promise
             initialItems={dn.items.map((it) => ({ description: it.description, quantity: it.quantity }))}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Delivered by">
               <input name="deliveredBy" defaultValue={dn.deliveredBy ?? ""} className={inputClass} />
             </Field>

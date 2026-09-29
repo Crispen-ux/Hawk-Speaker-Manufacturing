@@ -36,7 +36,7 @@ export default async function NewDeliveryNotePage() {
       <PageHeader eyebrow="Logistics" title="New delivery note" />
       <Card className="max-w-3xl">
         <form action={createDeliveryNote} className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Client">
               <select name="clientId" required className={inputClass}>
                 <option value="" disabled>
@@ -66,7 +66,7 @@ export default async function NewDeliveryNotePage() {
 
           <DeliveryItemsEditor initialItems={[]} />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Delivered by">
               <input name="deliveredBy" className={inputClass} placeholder="Driver / technician name" />
             </Field>

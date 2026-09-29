@@ -35,7 +35,7 @@ export default async function EditBomPage({ params }: { params: Promise<{ id: st
       <PageHeader eyebrow="Production" title={`Edit ${header.name}`} />
       <Card className="max-w-4xl">
         <form action={updateWithId} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name">
               <input name="name" defaultValue={header.name} required className={inputClass} />
             </Field>

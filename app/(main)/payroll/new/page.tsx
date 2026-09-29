@@ -19,7 +19,7 @@ export default async function NewPayrollRunPage() {
       <PageHeader eyebrow="Salaries" title="New payroll run" />
       <Card className="max-w-2xl">
         <form action={createPayrollRun} className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Period start">
               <input type="date" name="periodStart" required className={inputClass} />
             </Field>

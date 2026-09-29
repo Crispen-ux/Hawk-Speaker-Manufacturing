@@ -27,13 +27,13 @@ export default async function DeliveryNotesPage() {
           action={<LinkButton href="/delivery-notes/new">Create a delivery note</LinkButton>}
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-rule">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-rule">
+          <table className="w-full min-w-[440px] text-sm">
             <thead>
               <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
                 <th className="px-4 py-2.5 font-medium">Number</th>
                 <th className="px-4 py-2.5 font-medium">Client</th>
-                <th className="px-4 py-2.5 font-medium">Delivery date</th>
+                <th className="hidden px-4 py-2.5 font-medium md:table-cell">Delivery date</th>
                 <th className="px-4 py-2.5 font-medium">Items</th>
                 <th className="px-4 py-2.5 text-right font-medium">Status</th>
               </tr>
@@ -47,7 +47,7 @@ export default async function DeliveryNotesPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">{dn.client?.name}</td>
-                  <td className="px-4 py-3 text-ink-soft">{formatDate(dn.deliveryDate)}</td>
+                  <td className="hidden px-4 py-3 text-ink-soft md:table-cell">{formatDate(dn.deliveryDate)}</td>
                   <td className="px-4 py-3 text-ink-soft">{dn.items.length}</td>
                   <td className="px-4 py-3 text-right">
                     <StatusStamp status={dn.status} />

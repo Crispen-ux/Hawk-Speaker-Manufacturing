@@ -70,7 +70,7 @@ export default async function SettingsPage() {
             <Field label="Company name">
               <input name="companyName" defaultValue={settings.companyName} required className={inputClass} />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Registration number">
                 <input
                   name="registrationNumber"
@@ -82,7 +82,7 @@ export default async function SettingsPage() {
                 <input name="vatNumber" defaultValue={settings.vatNumber ?? ""} className={inputClass} />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Email">
                 <input name="email" defaultValue={settings.email ?? ""} className={inputClass} />
               </Field>
@@ -99,7 +99,7 @@ export default async function SettingsPage() {
         <Card className="max-w-2xl">
           <h2 className="mb-4 font-display text-lg font-bold text-navy">Money &amp; payments</h2>
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Currency symbol (shown on documents)">
                 <input name="currency" defaultValue={settings.currency} className={inputClass} />
               </Field>
@@ -116,7 +116,7 @@ export default async function SettingsPage() {
               />
               Prices include tax (VAT-inclusive)
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Default payment terms (days)">
                 <input
                   type="number"

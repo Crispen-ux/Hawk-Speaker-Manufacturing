@@ -101,7 +101,7 @@ export default async function DeliveryNoteDetailPage({ params }: { params: Promi
               </tbody>
             </table>
 
-            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-rule pt-4 text-sm">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 border-t border-rule pt-4 text-sm">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">Delivered by</div>
                 <div className="text-ink">{dn.deliveredBy || "—"}</div>

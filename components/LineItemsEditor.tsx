@@ -89,8 +89,8 @@ export default function LineItemsEditor({
         </div>
       )}
 
-      <div className="rounded-lg border border-rule">
-        <div className="grid grid-cols-[1fr_90px_130px_110px_36px] gap-2 border-b border-rule bg-paper-dim px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
+      <div className="overflow-x-auto rounded-lg border border-rule">
+        <div className="grid min-w-[540px] grid-cols-[1fr_90px_130px_110px_36px] gap-2 border-b border-rule bg-paper-dim px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
           <div>Description</div>
           <div>Qty</div>
           <div>Unit price</div>
@@ -100,7 +100,7 @@ export default function LineItemsEditor({
         {items.map((it, i) => (
           <div
             key={i}
-            className="grid grid-cols-[1fr_90px_130px_110px_36px] items-center gap-2 border-b border-rule px-4 py-2 last:border-b-0"
+            className="grid min-w-[540px] grid-cols-[1fr_90px_130px_110px_36px] items-center gap-2 border-b border-rule px-4 py-2 last:border-b-0"
           >
             <input
               value={it.description}
@@ -133,7 +133,7 @@ export default function LineItemsEditor({
             </button>
           </div>
         ))}
-        <div className="px-4 py-2.5">
+        <div className="min-w-[540px] px-4 py-2.5">
           <button
             type="button"
             onClick={addRow}

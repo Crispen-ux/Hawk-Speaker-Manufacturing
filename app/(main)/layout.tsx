@@ -23,7 +23,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         role={user?.role}
       />
       <main className="min-w-0 flex-1 bg-paper">
-        <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
+        <div className="mx-auto max-w-6xl px-4 pb-28 pt-8 md:px-8 md:pb-10 md:pt-10">
           <ModuleGate disabledKeys={disabledKeys}>
             <ToastProvider>{children}</ToastProvider>
           </ModuleGate>

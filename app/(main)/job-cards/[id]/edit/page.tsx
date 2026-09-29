@@ -30,7 +30,7 @@ export default async function EditJobCardPage({ params }: { params: Promise<{ id
       <PageHeader eyebrow="Field work" title={`Edit ${job.number}`} />
       <Card className="max-w-3xl">
         <form action={updateWithId} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Client">
               <select name="clientId" required defaultValue={job.clientId} className={inputClass}>
                 {allClients.map((c) => (
@@ -53,7 +53,7 @@ export default async function EditJobCardPage({ params }: { params: Promise<{ id
             <textarea name="description" defaultValue={job.description ?? ""} rows={3} className={inputClass} />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Technician">
               <input name="technician" defaultValue={job.technician ?? ""} className={inputClass} />
             </Field>

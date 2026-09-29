@@ -19,7 +19,7 @@ export default async function NewExpensePage() {
       <PageHeader eyebrow="Money out" title="Record expense" />
       <Card className="max-w-2xl">
         <form action={createExpense} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Description">
               <input name="description" required className={inputClass} placeholder="e.g. Diesel fill – bakkie" />
             </Field>

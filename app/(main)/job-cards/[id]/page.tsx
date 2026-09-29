@@ -111,7 +111,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
             <h2 className="mb-1 font-display text-lg font-bold text-navy">{job.title}</h2>
             {job.description && <p className="mb-4 text-sm text-ink-soft">{job.description}</p>}
 
-            <div className="mb-4 grid grid-cols-2 gap-4 text-sm text-ink-soft sm:grid-cols-4">
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 text-sm text-ink-soft sm:grid-cols-4">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.15em]">Opened</div>
                 <div className="text-ink">{formatDate(job.openedDate)}</div>

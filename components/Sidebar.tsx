@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import BottomNav from "@/components/BottomNav";
 import {
   LayoutDashboard,
   FileText,
@@ -311,11 +312,11 @@ export default function Sidebar({
         />
       </aside>
 
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-navy px-4 py-3 text-paper md:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-navy px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-paper md:hidden">
         <button
           onClick={() => setOpen(true)}
           aria-label="Open menu"
-          className="rounded-md p-1.5 text-paper/80 hover:bg-white/10"
+          className="-ml-1.5 flex min-h-11 min-w-11 items-center justify-center rounded-md text-paper/80 hover:bg-white/10"
         >
           <Menu size={22} strokeWidth={2} />
         </button>
@@ -323,6 +324,8 @@ export default function Sidebar({
         <img src={logoSrc} alt={name} className="h-8 w-auto max-w-[160px] object-contain" />
         <div className="w-8" />
       </div>
+
+      <BottomNav onMore={() => setOpen(true)} />
 
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
@@ -333,11 +336,11 @@ export default function Sidebar({
           />
           <div className="absolute inset-y-0 left-0 h-dvh w-64 shadow-2xl">
             <div className="flex h-full flex-col">
-              <div className="flex items-center justify-end border-b border-white/10 bg-navy px-3 py-2">
+              <div className="flex items-center justify-end border-b border-white/10 bg-navy px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close menu"
-                  className="rounded-md p-1.5 text-paper/70 hover:bg-white/10"
+                  className="-mr-1.5 flex min-h-11 min-w-11 items-center justify-center rounded-md text-paper/70 hover:bg-white/10"
                 >
                   <X size={20} strokeWidth={2} />
                 </button>

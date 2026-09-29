@@ -35,7 +35,7 @@ export default async function NewRecurringPage() {
       <PageHeader eyebrow="Recurring income" title="New recurring invoice" />
       <Card className="max-w-3xl">
         <form action={createRecurring} className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Client">
               <select name="clientId" required className={inputClass}>
                 <option value="" disabled>

@@ -11,7 +11,7 @@ export default async function NewEmployeePage() {
       <PageHeader eyebrow="People" title="Add employee" />
       <Card className="max-w-2xl">
         <form action={createEmployee} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="First name">
               <input name="firstName" required className={inputClass} placeholder="e.g. Thabo" />
             </Field>

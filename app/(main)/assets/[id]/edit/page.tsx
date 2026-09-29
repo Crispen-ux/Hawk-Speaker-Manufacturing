@@ -22,7 +22,7 @@ export default async function EditAssetPage({ params }: { params: Promise<{ id: 
       <PageHeader eyebrow="Assets" title={`Edit ${asset.name}`} />
       <Card className="max-w-2xl">
         <form action={save} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name">
               <input name="name" required defaultValue={asset.name} className={inputClass} />
             </Field>

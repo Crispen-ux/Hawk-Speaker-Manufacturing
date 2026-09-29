@@ -57,14 +57,14 @@ export default async function InvoicesPage({
           action={<LinkButton href="/invoices/new">Create an invoice</LinkButton>}
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-rule">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-rule">
+          <table className="w-full min-w-[460px] text-sm">
             <thead>
               <tr className="border-b border-rule bg-paper-dim text-left font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
                 <th className="px-4 py-2.5 font-medium">Number</th>
                 <th className="px-4 py-2.5 font-medium">Client</th>
-                <th className="px-4 py-2.5 font-medium">Issued</th>
-                <th className="px-4 py-2.5 font-medium">Due</th>
+                <th className="hidden px-4 py-2.5 font-medium md:table-cell">Issued</th>
+                <th className="hidden px-4 py-2.5 font-medium md:table-cell">Due</th>
                 <th className="px-4 py-2.5 text-right font-medium">Total</th>
                 <th className="px-4 py-2.5 text-right font-medium">Status</th>
               </tr>
@@ -78,8 +78,8 @@ export default async function InvoicesPage({
                     </Link>
                   </td>
                   <td className="px-4 py-3">{inv.client?.name}</td>
-                  <td className="px-4 py-3 text-ink-soft">{formatDate(inv.issueDate)}</td>
-                  <td className="px-4 py-3 text-ink-soft">{formatDate(inv.dueDate)}</td>
+                  <td className="hidden px-4 py-3 text-ink-soft md:table-cell">{formatDate(inv.issueDate)}</td>
+                  <td className="hidden px-4 py-3 text-ink-soft md:table-cell">{formatDate(inv.dueDate)}</td>
                   <td className="px-4 py-3 text-right font-mono">{money(inv.computed.total)}</td>
                   <td className="px-4 py-3 text-right">
                     <StatusStamp status={inv.computed.effectiveStatus} />

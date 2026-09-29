@@ -32,7 +32,7 @@ export default async function EditCreditNotePage({ params }: { params: Promise<{
       <Card className="max-w-3xl">
         <form action={save} className="space-y-5">
           <input type="hidden" name="invoiceId" value={cn.invoiceId ?? ""} />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Client">
               <select name="clientId" required defaultValue={String(cn.clientId)} className={inputClass}>
                 <option value="" disabled>

@@ -89,7 +89,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
                 <div className="text-ink">{VAT_LABELS[expense.vatTreatment] ?? expense.vatTreatment}</div>
               </div>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-rule pt-4 text-sm text-ink-soft">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 border-t border-rule pt-4 text-sm text-ink-soft">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.15em]">Supplier</div>
                 <div>{expense.supplier?.name || "—"}</div>

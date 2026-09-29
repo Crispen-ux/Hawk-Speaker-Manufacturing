@@ -13,7 +13,7 @@ export default function NewCatalogItemPage() {
           <Field label="Description (optional)">
             <textarea name="description" rows={2} className={inputClass} placeholder="Shown under the name when you add it to a line item" />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Unit price">
               <input name="unitPrice" required inputMode="decimal" className={inputClass} placeholder="0.00" />
             </Field>

@@ -14,7 +14,7 @@ export default async function NewMovementPage() {
       <PageHeader eyebrow="Stock" title="Record movement" />
       <Card className="max-w-2xl">
         <form action={recordMovement} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Product">
               <select name="catalogItemId" required className={inputClass}>
                 <option value="">— Choose —</option>

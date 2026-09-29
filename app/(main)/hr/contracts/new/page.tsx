@@ -20,7 +20,7 @@ export default async function NewContractPage() {
       <PageHeader eyebrow="People operations" title="Add contract" />
       <Card className="max-w-2xl">
         <form action={createContract} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Employee">
               <select name="employeeId" required className={inputClass}>
                 <option value="">— Choose —</option>

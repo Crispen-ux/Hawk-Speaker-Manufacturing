@@ -19,7 +19,7 @@ export default function NewSupplierPage() {
           <Field label="Address">
             <textarea name="address" rows={3} className={inputClass} />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Company registration">
               <input name="registrationNumber" className={inputClass} placeholder="e.g. 2020/123456/07" />
             </Field>
